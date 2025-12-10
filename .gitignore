@@ -32,4 +32,10 @@ go.work.sum
 .vscode/
 
 # functions directory
-./functions/
+/functions/
+
+# test functions
+*.zip
+
+# Exclude test_data
+!test_data/*
