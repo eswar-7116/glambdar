@@ -1,0 +1,6 @@
+{
+  "name": "Test Function",
+  "createdAt": "invalid-time",
+  "lastInvokedAt": "invalid-time",
+  "invokeCount": "not-an-integer"
+}
