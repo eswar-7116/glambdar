@@ -10,14 +10,14 @@ import (
 )
 
 const (
-	validZipFile   = "../../test_data/valid.zip"
-	invalidZipFile = "../../test_data/invalid.zip"
-	emptyZipFile   = "../../test_data/empty.zip"
-	noZipFile      = "../../test_data/none.zip"
+	validZipFile   = "../../test_data/zip/valid.zip"
+	invalidZipFile = "../../test_data/zip/invalid.zip"
+	emptyZipFile   = "../../test_data/zip/empty.zip"
+	noZipFile      = "../../test_data/zip/none.zip"
 )
 
 func TestExtractZIP_ValidZIP(t *testing.T) {
-	destDir, err := util.ExtractZIP(validZipFile)
+	destDir, err := util.ExtractZIP(validZipFile, "vaild")
 	if err != nil {
 		t.Fatalf("Expected no error, but got: %v", err)
 	}
@@ -29,14 +29,14 @@ func TestExtractZIP_ValidZIP(t *testing.T) {
 }
 
 func TestExtractZIP_InvalidZIP(t *testing.T) {
-	_, err := util.ExtractZIP(invalidZipFile)
+	_, err := util.ExtractZIP(invalidZipFile, "invalid")
 	if err == nil || !strings.Contains(err.Error(), "error opening zip") {
 		t.Fatalf("Expected error opening zip, but got: %v", err)
 	}
 }
 
 func TestExtractZIP_EmptyZIP(t *testing.T) {
-	destDir, err := util.ExtractZIP(emptyZipFile)
+	destDir, err := util.ExtractZIP(emptyZipFile, "empty")
 	if err != nil {
 		t.Fatalf("Expected no error, but got: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestExtractZIP_EmptyZIP(t *testing.T) {
 }
 
 func TestExtractZIP_NoZip(t *testing.T) {
-	_, err := util.ExtractZIP(noZipFile)
+	_, err := util.ExtractZIP(noZipFile, "noZip")
 	if err == nil {
 		t.Fatalf("Expected error from os.MkdirAll, but got: %v", err)
 	}
