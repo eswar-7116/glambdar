@@ -9,9 +9,7 @@ import (
 	"strings"
 )
 
-func ExtractZIP(zipFilePath string) (string, error) {
-	base := filepath.Base(zipFilePath)
-	funcName := strings.TrimSuffix(base, filepath.Ext(base))
+func ExtractZIP(zipFilePath string, funcName string) (string, error) {
 	destDir := filepath.Join(FunctionsDir, funcName)
 
 	if err := os.MkdirAll(destDir, 0755); err != nil {
