@@ -4,10 +4,9 @@ import "github.com/gin-gonic/gin"
 
 func Router() *gin.Engine {
 	router := gin.Default()
+	router.Use(gin.Recovery())
 
-	router.GET("/", func(c *gin.Context) {
-		c.Writer.Write([]byte("Hello from Glambdar!"))
-	})
+	registerDeployRoutes(router)
 
 	return router
 }
