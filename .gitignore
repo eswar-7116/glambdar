@@ -38,4 +38,4 @@ go.work.sum
 *.zip
 
 # Exclude test_data
-!test_data/*
+!test_data/zip/*
