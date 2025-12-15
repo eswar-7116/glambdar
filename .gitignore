@@ -33,9 +33,3 @@ go.work.sum
 
 # functions directory
 /functions/
-
-# test functions
-*.zip
-
-# Exclude test_data
-!test_data/zip/*
