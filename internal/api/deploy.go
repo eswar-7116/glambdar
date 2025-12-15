@@ -21,14 +21,14 @@ func registerDeployRoutes(router *gin.Engine) {
 func deployHandler(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		log.Println("ERROR: " + err.Error())
+		log.Println("ERROR while receiving form file: " + err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing zip file"})
 		return
 	}
 
 	tmpDir := filepath.Join(os.TempDir(), "glambdar")
 	if err = os.Mkdir(tmpDir, 0755); err != nil && !os.IsExist(err) {
-		log.Println("ERROR: " + err.Error())
+		log.Println("ERROR while creating temporary directory: " + err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create temporary directory"})
 		return
 	}
@@ -36,7 +36,7 @@ func deployHandler(c *gin.Context) {
 	zipBaseName := file.Filename
 	zipFilePath := filepath.Join(tmpDir, "glambdar-file-"+zipBaseName)
 	if err = c.SaveUploadedFile(file, zipFilePath); err != nil {
-		log.Println("ERROR: " + err.Error())
+		log.Println("ERROR while saving form file: " + err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
 		return
 	}
@@ -49,14 +49,14 @@ func deployHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": existsError})
 		return
 	} else if !os.IsNotExist(err) {
-		log.Println("ERROR: " + err.Error())
+		log.Println("ERROR while checking if function exists: " + err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check if function directory exists"})
 		return
 	}
 
 	funcPath, err := util.ExtractZIP(zipFilePath, funcName)
 	if err != nil {
-		log.Println("ERROR: " + err.Error())
+		log.Println("ERROR while extracting zip: " + err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract zip file"})
 		return
 	}
