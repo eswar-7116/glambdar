@@ -63,7 +63,7 @@ func deployHandler(c *gin.Context) {
 
 	meta := functions.Metadata{
 		Name:        funcName,
-		CreatedAt:   time.Now(),
+		CreatedAt:   time.Now().UTC(),
 		InvokeCount: 0,
 	}
 	functions.SaveMetadata(funcPath, &meta)
