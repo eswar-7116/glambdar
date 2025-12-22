@@ -17,31 +17,37 @@ var (
 )
 
 func TestExtractZIP_ValidZIP(t *testing.T) {
-	destDir, err := util.ExtractZIP(validZipFile, "vaild")
+	util.InitPaths()
+	extractedDir, err := util.ExtractZIP(validZipFile, "vaild")
+	defer os.RemoveAll(extractedDir)
 	if err != nil {
 		t.Fatalf("Expected no error, but got: %v", err)
 	}
 
-	fpath := filepath.Join(destDir, "index.js")
+	fpath := filepath.Join(extractedDir, "index.js")
 	if _, err := os.Stat(fpath); os.IsNotExist(err) {
 		t.Fatalf("Expected file %s to exist, but it does not", fpath)
 	}
 }
 
 func TestExtractZIP_InvalidZIP(t *testing.T) {
+	util.InitPaths()
 	_, err := util.ExtractZIP(invalidZipFile, "invalid")
+	defer os.RemoveAll(filepath.Join(util.FunctionsDir, "invalid"))
 	if err == nil || !strings.Contains(err.Error(), "error opening zip") {
 		t.Fatalf("Expected error opening zip, but got: %v", err)
 	}
 }
 
 func TestExtractZIP_EmptyZIP(t *testing.T) {
-	destDir, err := util.ExtractZIP(emptyZipFile, "empty")
+	util.InitPaths()
+	extractedDir, err := util.ExtractZIP(emptyZipFile, "empty")
+	defer os.RemoveAll(extractedDir)
 	if err != nil {
 		t.Fatalf("Expected no error, but got: %v", err)
 	}
 
-	files, err := os.ReadDir(destDir)
+	files, err := os.ReadDir(extractedDir)
 	if err != nil {
 		t.Fatalf("Error reading destination directory: %v", err)
 	}
@@ -52,7 +58,9 @@ func TestExtractZIP_EmptyZIP(t *testing.T) {
 }
 
 func TestExtractZIP_NoZip(t *testing.T) {
+	util.InitPaths()
 	_, err := util.ExtractZIP(noZipFile, "noZip")
+	defer os.RemoveAll(filepath.Join(util.FunctionsDir, "noZip"))
 	if err == nil {
 		t.Fatalf("Expected error from os.MkdirAll, but got: %v", err)
 	}

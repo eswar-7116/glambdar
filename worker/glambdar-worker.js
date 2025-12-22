@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const net = require("net");
 
 function error(msg) {
     console.error(JSON.stringify({ error: msg }));
@@ -24,42 +25,22 @@ try {
     error("failed to load handler: " + e.message);
 }
 
-// Read request from stdin
-let input = "";
-try {
-    input = fs.readFileSync(0, { encoding: "utf-8" });
-} catch (e) {
-    error("failed to read stdin");
-}
+const client = net.createConnection({
+    path: "/glambdar/glambdar.sock"
+});
 
-let event = {};
-try {
-    event = input ? JSON.parse(input) : {};
-} catch (e) {
-    error("invalid JSON input");
-}
-
-// Build request object
-const request = {
-    headers: event.headers || {},
-    body: event.body || "",
-    async json() {
-        try {
-            return JSON.parse(event.body || "{}");
-        } catch {
-            throw new Error("invalid JSON body");
+client.on("data", (data) => {
+    (async () => {
+        const req = JSON.parse(data.toString());
+        req.json = async () => {
+            try {
+                return JSON.parse(req.body || null);
+            } catch {
+                throw new Error("invalid JSON body");
+            }
         }
-    },
-};
 
-(async () => {
-    try {
-        const result = await handler(request);
-        if (!result || typeof result !== "object") {
-            error("handler must return an object");
-        }
-        console.log(JSON.stringify(result));
-    } catch (e) {
-        error(e.message);
-    }
-})();
+        const res = await handler(req);
+        client.write(JSON.stringify(res))
+    })();
+});
