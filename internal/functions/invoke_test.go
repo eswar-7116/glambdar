@@ -12,6 +12,11 @@ import (
 
 func setupInvokeEnv(t *testing.T) func() {
 	t.Helper()
+
+	if os.Getenv("RUN_INTEGRATION_TESTS") == "" {
+		t.Skip("skipping integration test")
+	}
+
 	tmp := t.TempDir()
 	util.InitPaths()
 	util.FunctionsDir = tmp
