@@ -7,6 +7,7 @@ func Router() *gin.Engine {
 	router.Use(gin.Recovery())
 
 	registerDeployRoutes(router)
+	registerInvokeRoutes(router)
 
 	return router
 }
