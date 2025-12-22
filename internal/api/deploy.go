@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/eswar-7116/glambdar/internal/functions"
 	"github.com/eswar-7116/glambdar/internal/util"
@@ -26,6 +25,7 @@ func deployHandler(c *gin.Context) {
 		return
 	}
 
+	// Create temporary directory if not exists
 	tmpDir := filepath.Join(os.TempDir(), "glambdar")
 	if err = os.Mkdir(tmpDir, 0755); err != nil && !os.IsExist(err) {
 		log.Println("ERROR while creating temporary directory: " + err.Error())
@@ -33,6 +33,7 @@ func deployHandler(c *gin.Context) {
 		return
 	}
 
+	// Save zip file in the temporary directory
 	zipBaseName := file.Filename
 	zipFilePath := filepath.Join(tmpDir, "glambdar-file-"+zipBaseName)
 	if err = c.SaveUploadedFile(file, zipFilePath); err != nil {
@@ -41,6 +42,7 @@ func deployHandler(c *gin.Context) {
 		return
 	}
 
+	// Check if function already exists
 	funcName := strings.TrimSuffix(zipBaseName, filepath.Ext(zipBaseName))
 	funcDir := filepath.Join(util.FunctionsDir, funcName)
 	if _, err = os.Stat(funcDir); err == nil {
@@ -54,23 +56,15 @@ func deployHandler(c *gin.Context) {
 		return
 	}
 
-	funcPath, err := util.ExtractZIP(zipFilePath, funcName)
-	if err != nil {
-		log.Println("ERROR while extracting zip: " + err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract zip file"})
+	// Deploy the function
+	if err := functions.Deploy(zipFilePath, funcName); err != nil {
+		log.Println("ERROR while deploying the function: " + err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check if function directory exists"})
 		return
 	}
 
-	meta := functions.Metadata{
-		Name:        funcName,
-		CreatedAt:   time.Now().UTC(),
-		InvokeCount: 0,
-	}
-	functions.SaveMetadata(funcPath, &meta)
-
 	c.JSON(http.StatusOK, gin.H{
 		"function": funcName,
-		"path":     funcPath,
 		"status":   "deployed",
 	})
 }
