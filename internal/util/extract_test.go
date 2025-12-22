@@ -9,11 +9,11 @@ import (
 	"github.com/eswar-7116/glambdar/internal/util"
 )
 
-const (
-	validZipFile   = "../../test_data/zip/valid.zip"
-	invalidZipFile = "../../test_data/zip/invalid.zip"
-	emptyZipFile   = "../../test_data/zip/empty.zip"
-	noZipFile      = "../../test_data/zip/none.zip"
+var (
+	validZipFile   = filepath.Join("..", "..", "test_data", "zip", "valid.zip")
+	invalidZipFile = filepath.Join("..", "..", "test_data", "zip", "invalid.zip")
+	emptyZipFile   = filepath.Join("..", "..", "test_data", "zip", "empty.zip")
+	noZipFile      = filepath.Join("..", "..", "test_data", "zip", "none.zip")
 )
 
 func TestExtractZIP_ValidZIP(t *testing.T) {
