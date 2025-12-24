@@ -8,6 +8,7 @@ func Router() *gin.Engine {
 
 	registerDeployRoutes(router)
 	registerInvokeRoutes(router)
+	registerInfoRoutes(router)
 
 	return router
 }
