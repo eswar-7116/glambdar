@@ -13,6 +13,7 @@ import (
 
 func registerInfoRoutes(router *gin.Engine) {
 	router.GET("/info", infoHandler)
+	router.GET("/info/:name", functionInfoHandler)
 }
 
 func infoHandler(c *gin.Context) {
@@ -39,4 +40,25 @@ func infoHandler(c *gin.Context) {
 		"count":     len(deployedFunctions),
 		"functions": deployedFunctions,
 	})
+}
+
+func functionInfoHandler(c *gin.Context) {
+	name := c.Param("name")
+
+	md, err := functions.LoadMetadata(filepath.Join(util.FunctionsDir, name))
+	if err != nil {
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Function not found!",
+			})
+		} else {
+			log.Printf("ERROR reading function '%s' details: %s", name, err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Error reading function details!",
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, md)
 }
