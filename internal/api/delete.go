@@ -19,7 +19,7 @@ func deleteFuncHandler(c *gin.Context) {
 	funcDir := filepath.Join(util.FunctionsDir, name)
 	info, err := os.Stat(funcDir)
 	if err != nil || !info.IsDir() {
-		c.JSON(http.StatusNoContent, gin.H{
+		c.JSON(http.StatusNotFound, gin.H{
 			"error": "Function not found!",
 		})
 		return
@@ -34,7 +34,7 @@ func deleteFuncHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusNoContent, gin.H{
 		"deleted": name,
 	})
 }
