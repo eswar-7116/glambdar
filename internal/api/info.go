@@ -21,7 +21,7 @@ func infoHandler(c *gin.Context) {
 	if err != nil {
 		log.Println("ERROR reading functions directory:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Unable to read functions directory!",
+			"error": "Failed to read functions directory",
 		})
 		return
 	}
