@@ -138,7 +138,7 @@ POST /invoke/:name
 
 * Runs the function in an isolated Docker container
 * One container per invocation
-* Uses UDS for runtime<-->worker communication
+* Uses UDS for runtime-worker communication
 > All invocations are **HTTP POST requests**.
 
 ---
@@ -173,9 +173,9 @@ DELETE /del/:name
 
 ---
 
-## Request Format (Runtime --> Function)
+## Function Request Format
 
-```json
+```js
 {
   headers: { [key: string]: string | string[] },
   body: string,
@@ -185,15 +185,15 @@ DELETE /del/:name
 
 Inside the function:
 
-* `req.headers` -> request headers
-* `req.body` -> raw body string
-* `await req.json()` -> parsed JSON body
+* `req.headers`: request headers
+* `req.body`: raw body string
+* `await req.json()`: parsed JSON body
 
 ---
 
-## Response Format (Function --> Runtime)
+## Function Response Format
 
-```json
+```js
 {
   statusCode?: number,
   headers?: { [key: string]: string | string[] },
