@@ -78,23 +78,43 @@ func Invoke(funcName string, req InvokeRequest) (InvokeResponse, error) {
 	md.InvokeCount++
 	SaveMetadata(funcDir, md)
 
+	connCh := make(chan *net.UnixConn, 1)
+	procCh := make(chan error, 1)
+
 	// Accept UDS connection
-	conn, err := l.AcceptUnix()
-	if err != nil {
-		return InvokeResponse{}, err
-	}
-	defer conn.Close()
+	go func() {
+		conn, err := l.AcceptUnix()
+		if err == nil {
+			connCh <- conn
+		}
+	}()
 
-	// Send request JSON via UDS
-	if err := json.NewEncoder(conn).Encode(req); err != nil {
-		return InvokeResponse{}, err
-	}
+	go func() {
+		procCh <- cmd.Wait()
+	}()
 
-	// Get response JSON via UDS
-	var res InvokeResponse
-	if err := json.NewDecoder(conn).Decode(&res); err != nil {
-		return InvokeResponse{}, err
-	}
+	select {
+	case conn := <-connCh:
+		defer conn.Close()
 
-	return res, nil
+		// Encode request
+		if err := json.NewEncoder(conn).Encode(req); err != nil {
+			return InvokeResponse{}, err
+		}
+
+		// Decode response
+		var res InvokeResponse
+		if err := json.NewDecoder(conn).Decode(&res); err != nil {
+			return InvokeResponse{}, err
+		}
+
+		return res, nil
+
+	case err := <-procCh:
+		return InvokeResponse{}, fmt.Errorf("worker exited early: %v", err)
+
+	case <-time.After(5 * time.Second):
+		_ = cmd.Process.Kill()
+		return InvokeResponse{}, fmt.Errorf("timeout waiting for worker (is Docker running?)")
+	}
 }
