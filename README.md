@@ -128,8 +128,6 @@ POST /deploy
 * Glambdar extracts the zip file into `GLAMBDAR_DIR/functions/<name>`
 * Initializes metadata
 
----
-
 ### Invoke a function
 
 ```
@@ -141,8 +139,6 @@ POST /invoke/:name
 * Uses UDS for runtime-worker communication
 > All invocations are **HTTP POST requests**.
 
----
-
 ### List all functions
 
 ```
@@ -151,8 +147,6 @@ GET /info
 
 * Returns metadata for all deployed functions
 
----
-
 ### Get function details
 
 ```
@@ -160,8 +154,6 @@ GET /info/:name
 ```
 
 * Returns metadata for a single function
-
----
 
 ### Delete a function
 
