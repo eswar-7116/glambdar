@@ -173,6 +173,36 @@ DELETE /del/:name
 
 ---
 
+## Function Interface
+
+Each deployed function **must** export a `handler` function from an `index.js` file.
+
+### Requirements
+
+* File name must be **`index.js`**
+* The entry point must be **`exports.handler`**
+* The handler must be an **async function**
+* The handler receives the request object described below in the [Function Request Format](#function-request-format) section
+
+### Example
+
+```js
+exports.handler = async (req) => {
+    const jsonData = await req.json();
+
+    return {
+        statusCode: 200,
+        body: {
+            message: `Hello ${jsonData.name}!`
+        }
+    };
+};
+```
+
+If `handler` is missing or `index.js` is not present, the invocation will fail.
+
+---
+
 ## Function Request Format
 
 ```js
