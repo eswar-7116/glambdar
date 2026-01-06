@@ -1,4 +1,4 @@
-package main
+package glambdar
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 
 const PORT = "8000"
 
-func init() {
+func Init() {
 	// Set the required file paths
 	if err := util.InitPaths(); err != nil {
 		fmt.Println(err.Error())
@@ -25,7 +25,7 @@ func init() {
 	}
 }
 
-func main() {
+func Start() {
 	log.Println("Glambdar is running on port 8000")
 	srv := &http.Server{
 		Addr:    ":" + PORT,
