@@ -111,10 +111,10 @@ func Invoke(funcName string, req InvokeRequest) (InvokeResponse, error) {
 		return res, nil
 
 	case err := <-procCh:
-		return InvokeResponse{}, fmt.Errorf("worker exited early: %v", err)
+		return InvokeResponse{}, fmt.Errorf("worker exited early (is Docker Daemon running?): %v", err)
 
 	case <-time.After(5 * time.Second):
 		_ = cmd.Process.Kill()
-		return InvokeResponse{}, fmt.Errorf("timeout waiting for worker (is Docker running?)")
+		return InvokeResponse{}, fmt.Errorf("timeout waiting for worker (is Docker Daemon running?)")
 	}
 }
