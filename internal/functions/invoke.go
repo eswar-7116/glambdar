@@ -50,6 +50,9 @@ func Invoke(funcName string, req InvokeRequest) (InvokeResponse, error) {
 	defer l.Close()
 
 	log.Println("Listening on /tmp/glambdar.sock...")
+	fmt.Println(funcDir)
+	fmt.Println(util.UDSPath)
+	fmt.Println(util.WorkerPath)
 
 	// Invoke the function in a container
 	cmd := exec.Command(

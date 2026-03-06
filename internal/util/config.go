@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -13,14 +12,16 @@ var (
 )
 
 func InitPaths() error {
-	BaseDir := os.Getenv("GLAMBDAR_DIR")
-	if BaseDir == "" {
-		return fmt.Errorf("GLAMBDAR_DIR is required")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
 	}
+
+	BaseDir := filepath.Join(home, ".glambdar")
 
 	FunctionsDir = filepath.Join(BaseDir, "functions")
 
-	_, err := os.Stat(FunctionsDir)
+	_, err = os.Stat(FunctionsDir)
 	if os.IsNotExist(err) {
 		err = os.Mkdir(FunctionsDir, 0755)
 		if err != nil {

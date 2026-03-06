@@ -54,13 +54,7 @@ git clone https://github.com/eswar-7116/glambdar.git
 cd glambdar
 ```
 
-### 2. Set the GLAMBDAR_DIR variable
-
-```bash
-export GLAMBDAR_DIR="$(pwd)"
-```
-
-### 3. Run the runtime
+### 2. Run the runtime
 
 #### Option A: Run directly (development)
 
@@ -77,7 +71,7 @@ go build -o glambdar ./cmd/glambdar
 
 The runtime starts an HTTP server on **`localhost:8000`**.
 
-### 4. Deploy a function
+### 3. Deploy a function
 
 ```bash
 curl -X POST \
@@ -87,7 +81,7 @@ curl -X POST \
 
 > The function name is automatically inherited from the zip file name.
 
-### 5. Invoke the function
+### 4. Invoke the function
 
 ```bash
 curl -X POST \
@@ -96,19 +90,19 @@ curl -X POST \
   http://localhost:8000/invoke/myfunc
 ```
 
-### 6. List deployed functions
+### 5. List deployed functions
 
 ```bash
 curl http://localhost:8000/info
 ```
 
-### 7. Get function details
+### 6. Get function details
 
 ```bash
 curl http://localhost:8000/info/myfunc
 ```
 
-### 8. Delete a function
+### 7. Delete a function
 
 ```bash
 curl -X DELETE http://localhost:8000/del/myfunc
