@@ -33,3 +33,7 @@ go.work.sum
 
 # functions directory
 /functions/
+
+# build output
+glambdar
+
