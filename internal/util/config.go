@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	BaseDir      string
 	FunctionsDir string
 	WorkerPath   string
 	UDSPath      = "/tmp/glambdar.sock"
@@ -17,7 +18,7 @@ func InitPaths() error {
 		return err
 	}
 
-	BaseDir := filepath.Join(home, ".glambdar")
+	BaseDir = filepath.Join(home, ".glambdar")
 
 	FunctionsDir = filepath.Join(BaseDir, "functions")
 
