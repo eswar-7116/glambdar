@@ -6,8 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/eswar-7116/glambdar/internal/config"
+	"github.com/eswar-7116/glambdar/internal/docker"
 	"github.com/eswar-7116/glambdar/internal/functions"
-	"github.com/eswar-7116/glambdar/internal/util"
 )
 
 func setupInvokeEnv(t *testing.T) func() {
@@ -18,9 +19,9 @@ func setupInvokeEnv(t *testing.T) func() {
 	}
 
 	tmp := t.TempDir()
-	util.InitPaths()
-	util.FunctionsDir = tmp
-	util.UDSPath = filepath.Join(tmp, "glambdar.sock")
+	config.InitPaths()
+	config.FunctionsDir = tmp
+	config.UDSPath = filepath.Join(tmp, "glambdar.sock")
 	return func() {
 		os.RemoveAll(tmp)
 	}
@@ -30,7 +31,14 @@ func TestInvoke_FunctionNotFound(t *testing.T) {
 	cleanup := setupInvokeEnv(t)
 	defer cleanup()
 
-	_, err := functions.Invoke("missingFunc", functions.InvokeRequest{})
+	d := &docker.Docker{
+		UDSPath:    config.UDSPath,
+		WorkerPath: config.WorkerPath,
+	}
+	defer d.Close()
+	ctx := t.Context()
+
+	_, err := functions.Invoke(ctx, d, "missingFunc", functions.InvokeRequest{})
 	if err == nil {
 		t.Fatalf("expected error for missing function")
 	}
@@ -40,7 +48,7 @@ func TestInvoke_HappyPath(t *testing.T) {
 	cleanup := setupInvokeEnv(t)
 	defer cleanup()
 
-	funcDir := filepath.Join(util.FunctionsDir, "valid")
+	funcDir := filepath.Join(config.FunctionsDir, "valid")
 	if _, err := os.Stat(funcDir); os.IsNotExist(err) {
 		if err := functions.Deploy(validZipFile, "valid"); err != nil {
 			t.Fatalf("deploy failed: %v", err)
@@ -54,7 +62,14 @@ func TestInvoke_HappyPath(t *testing.T) {
 		Body: `{"name":"Eswar"}`,
 	}
 
-	res, err := functions.Invoke("valid", req)
+	d := &docker.Docker{
+		UDSPath:    config.UDSPath,
+		WorkerPath: config.WorkerPath,
+	}
+	defer d.Close()
+	ctx := t.Context()
+
+	res, err := functions.Invoke(ctx, d, "valid", req)
 	if err != nil {
 		t.Fatalf("invoke failed: %v", err)
 	}

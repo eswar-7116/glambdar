@@ -11,14 +11,14 @@ import (
 	"time"
 
 	"github.com/eswar-7116/glambdar/internal/api"
-	"github.com/eswar-7116/glambdar/internal/util"
+	"github.com/eswar-7116/glambdar/internal/config"
 )
 
 const PORT = "8000"
 
 func Init() {
 	// Set the required file paths
-	if err := util.InitPaths(); err != nil {
+	if err := config.InitPaths(); err != nil {
 		fmt.Println(err.Error())
 		fmt.Println("Please make sure you defined GLAMBDAR_DIR in the environment.")
 		os.Exit(1)
@@ -53,6 +53,6 @@ func Start() {
 		fmt.Println("Server Shutdown Failed:", err)
 	}
 
-	os.Remove(util.UDSPath)
+	os.Remove(config.UDSPath)
 	fmt.Println("Deleting the UDS...")
 }

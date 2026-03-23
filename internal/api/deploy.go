@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
-	"github.com/eswar-7116/glambdar/internal/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -44,7 +44,7 @@ func deployHandler(c *gin.Context) {
 
 	// Check if function already exists
 	funcName := strings.TrimSuffix(zipBaseName, filepath.Ext(zipBaseName))
-	funcDir := filepath.Join(util.FunctionsDir, funcName)
+	funcDir := filepath.Join(config.FunctionsDir, funcName)
 	if _, err = os.Stat(funcDir); err == nil {
 		existsError := fmt.Sprintf("function directory '%s' already exists", funcDir)
 		log.Println("ERROR: " + existsError)

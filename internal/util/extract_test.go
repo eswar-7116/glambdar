@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/util"
 )
 
@@ -17,7 +18,7 @@ var (
 )
 
 func TestExtractZIP_ValidZIP(t *testing.T) {
-	util.InitPaths()
+	config.InitPaths()
 	extractedDir, err := util.ExtractZIP(validZipFile, "vaild")
 	defer os.RemoveAll(extractedDir)
 	if err != nil {
@@ -31,16 +32,16 @@ func TestExtractZIP_ValidZIP(t *testing.T) {
 }
 
 func TestExtractZIP_InvalidZIP(t *testing.T) {
-	util.InitPaths()
+	config.InitPaths()
 	_, err := util.ExtractZIP(invalidZipFile, "invalid")
-	defer os.RemoveAll(filepath.Join(util.FunctionsDir, "invalid"))
+	defer os.RemoveAll(filepath.Join(config.FunctionsDir, "invalid"))
 	if err == nil || !strings.Contains(err.Error(), "error opening zip") {
 		t.Fatalf("Expected error opening zip, but got: %v", err)
 	}
 }
 
 func TestExtractZIP_EmptyZIP(t *testing.T) {
-	util.InitPaths()
+	config.InitPaths()
 	extractedDir, err := util.ExtractZIP(emptyZipFile, "empty")
 	defer os.RemoveAll(extractedDir)
 	if err != nil {
@@ -58,9 +59,9 @@ func TestExtractZIP_EmptyZIP(t *testing.T) {
 }
 
 func TestExtractZIP_NoZip(t *testing.T) {
-	util.InitPaths()
+	config.InitPaths()
 	_, err := util.ExtractZIP(noZipFile, "noZip")
-	defer os.RemoveAll(filepath.Join(util.FunctionsDir, "noZip"))
+	defer os.RemoveAll(filepath.Join(config.FunctionsDir, "noZip"))
 	if err == nil {
 		t.Fatalf("Expected error from os.MkdirAll, but got: %v", err)
 	}

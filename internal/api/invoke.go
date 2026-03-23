@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
-	"github.com/eswar-7116/glambdar/internal/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,7 +19,7 @@ func registerInvokeRoutes(router *gin.Engine) {
 
 func invokeHandler(c *gin.Context) {
 	name := c.Param("name")
-	funcDir := filepath.Join(util.FunctionsDir, name)
+	funcDir := filepath.Join(config.FunctionsDir, name)
 
 	// Check if function exists
 	info, err := os.Stat(funcDir)
@@ -60,7 +60,7 @@ func invokeHandler(c *gin.Context) {
 	}
 
 	// Invoke function and get response object
-	resp, err := functions.Invoke(name, req)
+	resp, err := functions.Invoke(c, config.DockerClient, name, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

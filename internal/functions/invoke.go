@@ -1,16 +1,17 @@
 package functions
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 
-	"github.com/eswar-7116/glambdar/internal/util"
+	"github.com/eswar-7116/glambdar/internal/config"
+	"github.com/eswar-7116/glambdar/internal/docker"
 )
 
 type InvokeRequest struct {
@@ -24,8 +25,8 @@ type InvokeResponse struct {
 	Body       json.RawMessage   `json:"body"`
 }
 
-func Invoke(funcName string, req InvokeRequest) (InvokeResponse, error) {
-	funcDir, err := filepath.Abs(filepath.Join(util.FunctionsDir, funcName))
+func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRequest) (InvokeResponse, error) {
+	funcDir, err := filepath.Abs(filepath.Join(config.FunctionsDir, funcName))
 	if err != nil {
 		return InvokeResponse{}, err
 	}
@@ -41,7 +42,7 @@ func Invoke(funcName string, req InvokeRequest) (InvokeResponse, error) {
 
 	// Listen for connections in the UDS
 	l, err := net.ListenUnix("unix", &net.UnixAddr{
-		Name: util.UDSPath,
+		Name: config.UDSPath,
 		Net:  "unix",
 	})
 	if err != nil {
@@ -51,25 +52,36 @@ func Invoke(funcName string, req InvokeRequest) (InvokeResponse, error) {
 
 	log.Println("Listening on /tmp/glambdar.sock...")
 	fmt.Println(funcDir)
-	fmt.Println(util.UDSPath)
-	fmt.Println(util.WorkerPath)
+	fmt.Println(config.UDSPath)
+	fmt.Println(config.WorkerPath)
 
-	// Invoke the function in a container
-	cmd := exec.Command(
-		"docker", "run",
-		"--rm", "-i",
-		"--memory=128m",
-		"--cpus=0.5",
-		"-v", funcDir+":/function",
-		"-v", util.UDSPath+":/glambdar/glambdar.sock",
-		"-v", util.WorkerPath+":/glambdar/worker.js",
-		"node:25-slim",
-		"node", "/glambdar/worker.js", "/function",
-	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err = cmd.Start(); err != nil {
-		return InvokeResponse{}, err
+	// // Invoke the function in a container
+	// cmd := exec.Command(
+	// 	"docker", "run",
+	// 	"--rm", "-i",
+	// 	"--memory=128m",
+	// 	"--cpus=0.5",
+	// 	"-v", funcDir+":/function",
+	// 	"-v", util.UDSPath+":/glambdar/glambdar.sock",
+	// 	"-v", util.WorkerPath+":/glambdar/worker.js",
+	// 	"node:25-slim",
+	// 	"node", "/glambdar/worker.js", "/function",
+	// )
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
+	// if err = cmd.Start(); err != nil {
+	// 	return InvokeResponse{}, err
+	// }
+
+	// Create the container using your package
+	containerID, err := d.ContainerCreate(ctx, "glambdar-"+funcName, funcDir)
+	if err != nil {
+		return InvokeResponse{}, fmt.Errorf("failed to create container: %w", err)
+	}
+
+	// Start the container
+	if err := d.ContainerStart(ctx, containerID); err != nil {
+		return InvokeResponse{}, fmt.Errorf("failed to start container: %w", err)
 	}
 
 	// Update function metadata
@@ -82,7 +94,6 @@ func Invoke(funcName string, req InvokeRequest) (InvokeResponse, error) {
 	SaveMetadata(funcDir, md)
 
 	connCh := make(chan *net.UnixConn, 1)
-	procCh := make(chan error, 1)
 
 	// Accept UDS connection
 	go func() {
@@ -90,10 +101,6 @@ func Invoke(funcName string, req InvokeRequest) (InvokeResponse, error) {
 		if err == nil {
 			connCh <- conn
 		}
-	}()
-
-	go func() {
-		procCh <- cmd.Wait()
 	}()
 
 	select {
@@ -113,11 +120,11 @@ func Invoke(funcName string, req InvokeRequest) (InvokeResponse, error) {
 
 		return res, nil
 
-	case err := <-procCh:
-		return InvokeResponse{}, fmt.Errorf("worker exited early (is Docker Daemon running?): %v", err)
-
 	case <-time.After(5 * time.Second):
-		_ = cmd.Process.Kill()
-		return InvokeResponse{}, fmt.Errorf("timeout waiting for worker (is Docker Daemon running?)")
+		err = d.ContainerKill(ctx, containerID)
+		if err != nil {
+			return InvokeResponse{}, err
+		}
+		return InvokeResponse{}, fmt.Errorf("timeout waiting for worker")
 	}
 }

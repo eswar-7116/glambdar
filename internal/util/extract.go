@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/eswar-7116/glambdar/internal/config"
 )
 
 func ExtractZIP(zipFilePath string, funcName string) (string, error) {
-	destDir := filepath.Join(FunctionsDir, funcName)
+	destDir := filepath.Join(config.FunctionsDir, funcName)
 
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return "nil", fmt.Errorf("error creating function dir: %w", err)

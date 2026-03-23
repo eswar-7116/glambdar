@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/eswar-7116/glambdar/internal/util"
+	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,7 +16,7 @@ func registerDeleteRoutes(router *gin.Engine) {
 
 func deleteFuncHandler(c *gin.Context) {
 	name := c.Param("name")
-	funcDir := filepath.Join(util.FunctionsDir, name)
+	funcDir := filepath.Join(config.FunctionsDir, name)
 	info, err := os.Stat(funcDir)
 	if err != nil || !info.IsDir() {
 		c.JSON(http.StatusNotFound, gin.H{
