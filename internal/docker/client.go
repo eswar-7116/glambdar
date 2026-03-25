@@ -3,8 +3,10 @@ package docker
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
+	"github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/client"
@@ -15,6 +17,8 @@ type DockerAPI interface {
 	ContainerStart(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error)
 	ContainerKill(ctx context.Context, containerID string, options client.ContainerKillOptions) (client.ContainerKillResult, error)
 	Close() error
+	ImagePull(ctx context.Context, refStr string, options client.ImagePullOptions) (client.ImagePullResponse, error)
+	ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (client.ImageInspectResult, error)
 }
 
 type Docker struct {
@@ -53,9 +57,30 @@ func (d *Docker) ContainerCreate(ctx context.Context, name, funcDir string) (str
 		return "", err
 	}
 
+	const image = "node:25-slim"
+
+	_, err = cli.ImageInspect(ctx, image)
+	if err != nil {
+		if !errdefs.IsNotFound(err) {
+			return "", fmt.Errorf("failed to inspect image: %w", err)
+		}
+
+		fmt.Printf("Image %s not found. Pulling...", image)
+		rc, err := cli.ImagePull(ctx, image, client.ImagePullOptions{})
+		if err != nil {
+			return "", fmt.Errorf("failed to pull image: %w", err)
+		}
+		defer rc.Close()
+
+		// Drain the stream
+		if _, err = io.Copy(io.Discard, rc); err != nil {
+			return "", fmt.Errorf("failed to stream image pull: %w", err)
+		}
+	}
+
 	container, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Name:  name,
-		Image: "node:25-slim",
+		Image: image,
 		Config: &container.Config{
 			Hostname: "glambdar",
 			Cmd:      []string{"node", "/glambdar/worker.js", "/function"},
