@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/eswar-7116/glambdar/internal/docker"
+	"github.com/eswar-7116/glambdar/internal/pool"
 )
 
 var (
@@ -13,6 +14,7 @@ var (
 	WorkerPath   string
 	UDSPath      = "/tmp/glambdar.sock"
 	DockerClient = &docker.Docker{}
+	PoolManager  = &pool.PoolManager{}
 )
 
 func InitPaths() error {

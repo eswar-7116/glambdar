@@ -68,6 +68,7 @@ func TestInvoke_HappyPath(t *testing.T) {
 	}
 	defer d.Close()
 	ctx := t.Context()
+	defer config.PoolManager.DeleteAllContainers(ctx, d)
 
 	res, err := functions.Invoke(ctx, d, "valid", req)
 	if err != nil {

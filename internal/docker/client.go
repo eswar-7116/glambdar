@@ -16,6 +16,7 @@ type DockerAPI interface {
 	ContainerCreate(ctx context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error)
 	ContainerStart(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error)
 	ContainerKill(ctx context.Context, containerID string, options client.ContainerKillOptions) (client.ContainerKillResult, error)
+	ContainerRemove(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error)
 	Close() error
 	ImagePull(ctx context.Context, refStr string, options client.ImagePullOptions) (client.ImagePullResponse, error)
 	ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (client.ImageInspectResult, error)
@@ -51,7 +52,7 @@ func (d *Docker) Close() error {
 	return nil
 }
 
-func (d *Docker) ContainerCreate(ctx context.Context, name, funcDir string) (string, error) {
+func (d *Docker) ContainerCreate(ctx context.Context, funcDir string) (string, error) {
 	cli, err := d.GetClient()
 	if err != nil {
 		return "", err
@@ -79,14 +80,12 @@ func (d *Docker) ContainerCreate(ctx context.Context, name, funcDir string) (str
 	}
 
 	container, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
-		Name:  name,
 		Image: image,
 		Config: &container.Config{
 			Hostname: "glambdar",
 			Cmd:      []string{"node", "/glambdar/worker.js", "/function"},
 		},
 		HostConfig: &container.HostConfig{
-			AutoRemove: true, // TODO: Remove later
 			Mounts: []mount.Mount{
 				{
 					Type:   mount.TypeBind,
@@ -138,6 +137,19 @@ func (d *Docker) ContainerKill(ctx context.Context, id string) error {
 
 	_, err = cli.ContainerKill(ctx, id, client.ContainerKillOptions{
 		Signal: "SIGKILL",
+	})
+	return err
+}
+
+func (d *Docker) ContainerRemove(ctx context.Context, id string) error {
+	cli, err := d.GetClient()
+	if err != nil {
+		return err
+	}
+
+	_, err = cli.ContainerRemove(ctx, id, client.ContainerRemoveOptions{
+		RemoveVolumes: true,
+		Force:         true,
 	})
 	return err
 }

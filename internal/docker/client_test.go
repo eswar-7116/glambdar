@@ -11,6 +11,7 @@ type MockDockerAPI struct {
 	ContainerCreateFunc func(ctx context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error)
 	ContainerStartFunc  func(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error)
 	ContainerKillFunc   func(ctx context.Context, containerID string, options client.ContainerKillOptions) (client.ContainerKillResult, error)
+	ContainerRemoveFunc func(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error)
 	CloseFunc           func() error
 	ImagePullFunc       func(ctx context.Context, refStr string, options client.ImagePullOptions) (client.ImagePullResponse, error)
 	ImageInspectFunc    func(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (client.ImageInspectResult, error)
@@ -42,6 +43,10 @@ func (m *MockDockerAPI) ContainerKill(ctx context.Context, containerID string, o
 	return m.ContainerKillFunc(ctx, containerID, options)
 }
 
+func (m *MockDockerAPI) ContainerRemove(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error) {
+	return m.ContainerRemoveFunc(ctx, containerID, options)
+}
+
 func (m *MockDockerAPI) Close() error {
 	if m.CloseFunc != nil {
 		return m.CloseFunc()
@@ -52,9 +57,6 @@ func (m *MockDockerAPI) Close() error {
 func TestDocker_ContainerCreate(t *testing.T) {
 	mock := &MockDockerAPI{
 		ContainerCreateFunc: func(ctx context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error) {
-			if options.Name != "test-container" {
-				t.Errorf("expected name test-container, got %s", options.Name)
-			}
 			return client.ContainerCreateResult{ID: "test-id"}, nil
 		},
 	}
@@ -63,7 +65,7 @@ func TestDocker_ContainerCreate(t *testing.T) {
 		client: mock,
 	}
 
-	id, err := d.ContainerCreate(context.Background(), "test-container", "/some/dir")
+	id, err := d.ContainerCreate(context.Background(), "/some/dir")
 	if err != nil {
 		t.Fatalf("ContainerCreate failed: %v", err)
 	}
@@ -113,5 +115,31 @@ func TestDocker_ContainerKill(t *testing.T) {
 	err := d.ContainerKill(context.Background(), "test-id")
 	if err != nil {
 		t.Fatalf("ContainerKill failed: %v", err)
+	}
+}
+
+func TestDocker_ContainerRemove(t *testing.T) {
+	mock := &MockDockerAPI{
+		ContainerRemoveFunc: func(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error) {
+			if containerID != "test-id" {
+				t.Errorf("expected id test-id, got %s", containerID)
+			}
+			if !options.Force {
+				t.Errorf("expected force to be true")
+			}
+			if !options.RemoveVolumes {
+				t.Errorf("expected remove volumes to be true")
+			}
+			return client.ContainerRemoveResult{}, nil
+		},
+	}
+
+	d := &Docker{
+		client: mock,
+	}
+
+	err := d.ContainerRemove(context.Background(), "test-id")
+	if err != nil {
+		t.Fatalf("ContainerRemove failed: %v", err)
 	}
 }

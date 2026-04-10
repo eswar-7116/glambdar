@@ -74,10 +74,19 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 	// }
 
 	// Create the container using your package
-	containerID, err := d.ContainerCreate(ctx, "glambdar-"+funcName, funcDir)
-	if err != nil {
-		return InvokeResponse{}, fmt.Errorf("failed to create container: %w", err)
+	p := config.PoolManager.GetOrCreate(funcName)
+	containerID, warm := p.Acquire()
+	if !warm {
+		containerID, err = d.ContainerCreate(ctx, funcDir)
+		if err != nil {
+			return InvokeResponse{}, fmt.Errorf("failed to create container: %w", err)
+		}
 	}
+	defer func() {
+		if !p.Release(containerID) {
+			d.ContainerKill(ctx, containerID)
+		}
+	}()
 
 	// Start the container
 	if err := d.ContainerStart(ctx, containerID); err != nil {

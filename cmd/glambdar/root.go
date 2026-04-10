@@ -53,6 +53,8 @@ func Start() {
 		fmt.Println("Server Shutdown Failed:", err)
 	}
 
+	config.PoolManager.DeleteAllContainers(ctx, config.DockerClient)
+
 	if err := config.DockerClient.Close(); err != nil {
 		fmt.Printf("Error closing Docker client: %v\n", err)
 	}
