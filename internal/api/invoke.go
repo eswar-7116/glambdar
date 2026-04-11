@@ -62,8 +62,9 @@ func invokeHandler(c *gin.Context) {
 	// Invoke function and get response object
 	resp, err := functions.Invoke(c, config.DockerClient, name, req)
 	if err != nil {
+		log.Println("ERROR:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+			"error": "Glambdar Server Error",
 		})
 		return
 	}

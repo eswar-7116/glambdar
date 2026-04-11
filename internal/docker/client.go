@@ -52,6 +52,20 @@ func (d *Docker) Close() error {
 	return nil
 }
 
+func (d *Docker) Ping(ctx context.Context) error {
+	cli, err := d.GetClient()
+	if err != nil {
+		return err
+	}
+
+	realCli, ok := cli.(*client.Client)
+	if ok {
+		_, err := realCli.Ping(ctx, client.PingOptions{})
+		return err
+	}
+	return nil
+}
+
 func (d *Docker) ContainerCreate(ctx context.Context, funcDir string) (string, error) {
 	cli, err := d.GetClient()
 	if err != nil {

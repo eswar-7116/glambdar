@@ -26,6 +26,14 @@ func Init() {
 }
 
 func Start() {
+	pingCtx, pingCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer pingCancel()
+	if err := config.DockerClient.Ping(pingCtx); err != nil {
+		fmt.Println("Error: Docker daemon is not reachable. Please make sure Docker is running.")
+		fmt.Printf("Details: %v\n", err)
+		os.Exit(1)
+	}
+
 	log.Println("Glambdar is running on port 8000")
 	srv := &http.Server{
 		Addr:    ":" + PORT,
