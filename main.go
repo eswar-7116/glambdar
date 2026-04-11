@@ -19,21 +19,19 @@ func init() {
 	}
 
 	glambdarPath := filepath.Join(home, ".glambdar")
-	if _, err = os.Stat(glambdarPath); os.IsNotExist(err) {
-		fmt.Println("$HOME/.glambdar not found. Creating one now...")
 
-		err = os.MkdirAll(filepath.Join(glambdarPath, "worker"), 0755)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error creating directory $HOME/.glambdar/worker:", err)
-		}
-
-		err = os.WriteFile(filepath.Join(glambdarPath, "worker", "glambdar-worker.js"), workerScript, 0644)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error creating worker script in $HOME/.glambdar/worker:", err)
-		}
-
-		workerScript = nil
+	// Ensure the worker directory exists
+	err = os.MkdirAll(filepath.Join(glambdarPath, "worker"), 0755)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error creating directory $HOME/.glambdar/worker:", err)
 	}
+
+	// Always write the latest embedded worker script
+	err = os.WriteFile(filepath.Join(glambdarPath, "worker", "glambdar-worker.js"), workerScript, 0644)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error writing worker script:", err)
+	}
+	workerScript = nil
 
 	glambdar.Init()
 }

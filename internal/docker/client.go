@@ -26,7 +26,6 @@ type DockerAPI interface {
 type Docker struct {
 	client     DockerAPI
 	once       sync.Once
-	UDSPath    string
 	WorkerPath string
 }
 
@@ -67,7 +66,7 @@ func (d *Docker) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (d *Docker) ContainerCreate(ctx context.Context, funcDir string) (string, error) {
+func (d *Docker) ContainerCreate(ctx context.Context, funcDir, socketPath string) (string, error) {
 	cli, err := d.GetClient()
 	if err != nil {
 		return "", err
@@ -109,8 +108,8 @@ func (d *Docker) ContainerCreate(ctx context.Context, funcDir string) (string, e
 				},
 				{
 					Type:   mount.TypeBind,
-					Source: d.UDSPath,
-					Target: "/glambdar/glambdar.sock",
+					Source: socketPath,
+					Target: "/glambdar-sock/",
 				},
 				{
 					Type:   mount.TypeBind,

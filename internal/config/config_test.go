@@ -31,18 +31,14 @@ func TestInitPathsWithBase(t *testing.T) {
 		t.Errorf("expected FunctionsDir to be created, but it does not exist")
 	}
 
-	if UDSPath != "/tmp/glambdar.sock" {
-		t.Errorf("expected UDSPath to be /tmp/glambdar.sock, got %s", UDSPath)
-	}
+
 
 	expectedWorkerPath := filepath.Join(tempDir, "worker", "glambdar-worker.js")
 	if WorkerPath != expectedWorkerPath {
 		t.Errorf("expected WorkerPath to be %s, got %s", expectedWorkerPath, WorkerPath)
 	}
 
-	if DockerClient.UDSPath != UDSPath {
-		t.Errorf("expected DockerClient.UDSPath to be %s, got %s", UDSPath, DockerClient.UDSPath)
-	}
+
 
 	if DockerClient.WorkerPath != expectedWorkerPath {
 		t.Errorf("expected DockerClient.WorkerPath to be %s, got %s", expectedWorkerPath, DockerClient.WorkerPath)

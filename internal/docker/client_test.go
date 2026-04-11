@@ -70,7 +70,7 @@ func TestDocker_ContainerCreate(t *testing.T) {
 		client: mock,
 	}
 
-	id, err := d.ContainerCreate(context.Background(), "/some/dir")
+	id, err := d.ContainerCreate(context.Background(), "/some/dir", "/tmp/glambdar-test/")
 	if err != nil {
 		t.Fatalf("ContainerCreate failed: %v", err)
 	}

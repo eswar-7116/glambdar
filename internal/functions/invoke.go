@@ -42,58 +42,46 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 		return InvokeResponse{}, fmt.Errorf("%s is not a directory", funcDir)
 	}
 
-	// Listen for connections in the UDS
-	l, err := net.ListenUnix("unix", &net.UnixAddr{
-		Name: config.UDSPath,
-		Net:  "unix",
-	})
-	if err != nil {
-		return InvokeResponse{}, err
-	}
-	defer l.Close()
-
-	log.Println("Listening on /tmp/glambdar.sock...")
-	fmt.Println(funcDir)
-	fmt.Println(config.UDSPath)
-	fmt.Println(config.WorkerPath)
-
-	// // Invoke the function in a container
-	// cmd := exec.Command(
-	// 	"docker", "run",
-	// 	"--rm", "-i",
-	// 	"--memory=128m",
-	// 	"--cpus=0.5",
-	// 	"-v", funcDir+":/function",
-	// 	"-v", util.UDSPath+":/glambdar/glambdar.sock",
-	// 	"-v", util.WorkerPath+":/glambdar/worker.js",
-	// 	"node:25-slim",
-	// 	"node", "/glambdar/worker.js", "/function",
-	// )
-	// cmd.Stdout = os.Stdout
-	// cmd.Stderr = os.Stderr
-	// if err = cmd.Start(); err != nil {
-	// 	return InvokeResponse{}, err
-	// }
-
-	// Create the container using your package
+	// Acquire a warm container or create a new one
 	p := config.PoolManager.GetOrCreate(funcName)
-	containerID, warm := p.Acquire()
+	containerID, socketPath, warm := p.Acquire()
 	if !warm {
-		containerID, err = d.ContainerCreate(ctx, funcDir)
+		// Generate a per-container socket directory on the host
+		socketDir, err := os.MkdirTemp("", "glambdar-sock-*")
 		if err != nil {
+			return InvokeResponse{}, fmt.Errorf("failed to create socket dir: %w", err)
+		}
+		os.Chmod(socketDir, 0777)
+		socketPath = socketDir
+
+		containerID, err = d.ContainerCreate(ctx, funcDir, socketPath)
+		if err != nil {
+			os.RemoveAll(socketPath)
 			return InvokeResponse{}, fmt.Errorf("failed to create container: %w", err)
 		}
-	}
-	defer func() {
-		if !p.Release(containerID) {
+
+		// Start the container
+		if err := d.ContainerStart(ctx, containerID); err != nil {
+			os.RemoveAll(socketPath)
+			return InvokeResponse{}, fmt.Errorf("failed to start container: %w", err)
+		}
+
+		// Wait for the worker's UDS server to become ready
+		workerSock := filepath.Join(socketPath, "glambdar.sock")
+		if err := waitForSocket(workerSock, 5*time.Second); err != nil {
 			d.ContainerKill(ctx, containerID)
+			os.RemoveAll(socketPath)
+			return InvokeResponse{}, fmt.Errorf("worker socket not ready: %w", err)
+		}
+	}
+
+	// Release container back to pool (or kill if pool is full) on return
+	defer func() {
+		if !p.Release(containerID, socketPath) {
+			d.ContainerKill(ctx, containerID)
+			os.RemoveAll(socketPath)
 		}
 	}()
-
-	// Start the container
-	if err := d.ContainerStart(ctx, containerID); err != nil {
-		return InvokeResponse{}, fmt.Errorf("failed to start container: %w", err)
-	}
 
 	// Update function metadata
 	md, err := LoadMetadata(funcName)
@@ -106,36 +94,34 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 		log.Println("ERROR saving metadata:", err)
 	}
 
-	connCh := make(chan *net.UnixConn, 1)
+	// Dial the container's UDS and send the request
+	workerSock := filepath.Join(socketPath, "glambdar.sock")
+	conn, err := net.DialTimeout("unix", workerSock, 5*time.Second)
+	if err != nil {
+		return InvokeResponse{}, fmt.Errorf("failed to dial worker socket: %w", err)
+	}
+	defer conn.Close()
 
-	// Accept UDS connection
-	go func() {
-		conn, err := l.AcceptUnix()
-		if err == nil {
-			connCh <- conn
-		}
-	}()
+	// Encode request
+	if err := json.NewEncoder(conn).Encode(req); err != nil {
+		return InvokeResponse{}, fmt.Errorf("failed to send request: %w", err)
+	}
 
-	select {
-	case conn := <-connCh:
-		defer conn.Close()
+	// Signal EOF so worker knows request is complete
+	if uc, ok := conn.(*net.UnixConn); ok {
+		uc.CloseWrite()
+	}
 
-		// Encode request
-		if err := json.NewEncoder(conn).Encode(req); err != nil {
-			return InvokeResponse{}, err
-		}
+	// Decode response
+	var res InvokeResponse
+	if err := json.NewDecoder(conn).Decode(&res); err != nil {
+		return InvokeResponse{}, fmt.Errorf("failed to read response: %w", err)
+	}
 
-		// Decode response
-		var res InvokeResponse
-		if err := json.NewDecoder(conn).Decode(&res); err != nil {
-			return InvokeResponse{}, err
-		}
-
-		out, err := d.ContainerLogs(ctx, containerID, md.LastInvokedAt.Format(time.RFC3339))
-		if err != nil {
-			return InvokeResponse{}, err
-		}
-
+	// Process logs
+	out, err := d.ContainerLogs(ctx, containerID, md.LastInvokedAt.Format(time.RFC3339))
+	if err == nil {
+		defer out.Close()
 		var stdout, stderr bytes.Buffer
 		stdcopy.StdCopy(&stdout, &stderr, out)
 
@@ -146,14 +132,21 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 			Stdout:    stdout.String(),
 			Stderr:    stderr.String(),
 		})
-
-		return res, nil
-
-	case <-time.After(5 * time.Second):
-		err = d.ContainerKill(ctx, containerID)
-		if err != nil {
-			return InvokeResponse{}, err
-		}
-		return InvokeResponse{}, fmt.Errorf("timeout waiting for worker")
 	}
+
+	return res, nil
+}
+
+// waitForSocket polls until the unix socket at path is dial-able or timeout expires.
+func waitForSocket(path string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("unix", path, 200*time.Millisecond)
+		if err == nil {
+			conn.Close()
+			return nil
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return fmt.Errorf("timeout after %s waiting for %s", timeout, path)
 }

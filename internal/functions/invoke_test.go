@@ -31,7 +31,6 @@ func setupInvokeEnv(t *testing.T) func() {
 	}
 	config.WorkerPath = workerPath
 
-	config.UDSPath = filepath.Join(tmp, "glambdar.sock")
 	return func() {
 		os.RemoveAll(tmp)
 	}
@@ -42,7 +41,6 @@ func TestInvoke_FunctionNotFound(t *testing.T) {
 	defer cleanup()
 
 	d := &docker.Docker{
-		UDSPath:    config.UDSPath,
 		WorkerPath: config.WorkerPath,
 	}
 	defer d.Close()
@@ -73,7 +71,6 @@ func TestInvoke_HappyPath(t *testing.T) {
 	}
 
 	d := &docker.Docker{
-		UDSPath:    config.UDSPath,
 		WorkerPath: config.WorkerPath,
 	}
 	defer d.Close()

@@ -35,6 +35,7 @@ func (pm *PoolManager) DeleteAllContainers(ctx context.Context, d *docker.Docker
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to delete container (%s): %s\n", e.containerID[:12], err)
 				}
+				os.RemoveAll(e.socketPath)
 			default:
 				return true // pool drained, move to next
 			}
@@ -53,6 +54,7 @@ func (pm *PoolManager) RemoveStaleContainers(ctx context.Context, d *docker.Dock
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "Failed to remove stale container (%s): %s\n", e.containerID[:12], err)
 					}
+					os.RemoveAll(e.socketPath)
 				} else {
 					p.idle <- e
 					return true

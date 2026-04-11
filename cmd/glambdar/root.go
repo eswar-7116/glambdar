@@ -91,7 +91,4 @@ func Start() {
 	if err := config.DockerClient.Close(); err != nil {
 		fmt.Printf("Error closing Docker client: %v\n", err)
 	}
-
-	os.Remove(config.UDSPath)
-	fmt.Println("Deleting the UDS...")
 }

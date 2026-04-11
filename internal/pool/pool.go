@@ -6,6 +6,7 @@ import (
 
 type entry struct {
 	containerID string
+	socketPath  string
 	lastUsed    time.Time
 }
 
@@ -13,18 +14,18 @@ type ContainerPool struct {
 	idle chan entry
 }
 
-func (p *ContainerPool) Acquire() (string, bool) {
+func (p *ContainerPool) Acquire() (containerID string, socketPath string, warm bool) {
 	select {
 	case e := <-p.idle:
-		return e.containerID, true // got a warm container
+		return e.containerID, e.socketPath, true // got a warm container
 	default:
-		return "", false // pool empty, caller must spin up new one
+		return "", "", false // pool empty, caller must spin up new one
 	}
 }
 
-func (p *ContainerPool) Release(containerID string) bool {
+func (p *ContainerPool) Release(containerID, socketPath string) bool {
 	select {
-	case p.idle <- entry{containerID, time.Now()}:
+	case p.idle <- entry{containerID, socketPath, time.Now()}:
 		return true // returned to pool
 	default:
 		return false // pool full, caller must kill

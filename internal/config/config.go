@@ -14,7 +14,6 @@ var (
 	ConfigDir    string
 	FunctionsDir string
 	WorkerPath   string
-	UDSPath      = "/tmp/glambdar.sock"
 	DockerClient = &docker.Docker{}
 	PoolManager  = &pool.PoolManager{}
 	DB           *gorm.DB
@@ -31,10 +30,8 @@ func InitPaths() error {
 func InitPathsWithBase(baseDir string) error {
 	ConfigDir = baseDir
 	FunctionsDir = filepath.Join(ConfigDir, "functions")
-	UDSPath = "/tmp/glambdar.sock"
 	WorkerPath = filepath.Join(ConfigDir, "worker", "glambdar-worker.js")
 
-	DockerClient.UDSPath = UDSPath
 	DockerClient.WorkerPath = WorkerPath
 
 	err := os.MkdirAll(FunctionsDir, 0755)
