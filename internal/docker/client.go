@@ -17,6 +17,7 @@ type DockerAPI interface {
 	ContainerStart(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error)
 	ContainerKill(ctx context.Context, containerID string, options client.ContainerKillOptions) (client.ContainerKillResult, error)
 	ContainerRemove(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error)
+	ContainerLogs(ctx context.Context, containerID string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error)
 	Close() error
 	ImagePull(ctx context.Context, refStr string, options client.ImagePullOptions) (client.ImagePullResponse, error)
 	ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (client.ImageInspectResult, error)
@@ -166,4 +167,19 @@ func (d *Docker) ContainerRemove(ctx context.Context, id string) error {
 		Force:         true,
 	})
 	return err
+}
+
+func (d *Docker) ContainerLogs(ctx context.Context, id string, since string) (client.ContainerLogsResult, error) {
+	cli, err := d.GetClient()
+	if err != nil {
+		return nil, err
+	}
+
+	c := cli.(*client.Client)
+	out, err := c.ContainerLogs(ctx, id, client.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Since:      since,
+	})
+	return out, err
 }

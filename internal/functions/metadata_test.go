@@ -8,14 +8,17 @@ import (
 	"github.com/eswar-7116/glambdar/internal/functions"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func setupTestDB(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	if err != nil {
 		t.Fatalf("failed to create memory db: %v", err)
 	}
-	db.AutoMigrate(&functions.Metadata{})
+	db.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 	config.DB = db
 }
 

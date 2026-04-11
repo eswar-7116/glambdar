@@ -9,6 +9,7 @@ import (
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/docker"
 	"github.com/eswar-7116/glambdar/internal/functions"
+	"gorm.io/gorm/logger"
 )
 
 func setupInvokeEnv(t *testing.T) func() {
@@ -19,8 +20,17 @@ func setupInvokeEnv(t *testing.T) func() {
 	}
 
 	tmp := t.TempDir()
-	config.InitPaths()
-	config.FunctionsDir = tmp
+	config.InitPathsWithBase(tmp)
+	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
+	config.DB.Logger = logger.Default.LogMode(logger.Silent)
+
+	// In tests, we need to point to the worker script in the repository
+	workerPath, err := filepath.Abs(filepath.Join("..", "..", "worker", "glambdar-worker.js"))
+	if err != nil {
+		t.Fatalf("failed to get absolute path for worker: %v", err)
+	}
+	config.WorkerPath = workerPath
+
 	config.UDSPath = filepath.Join(tmp, "glambdar.sock")
 	return func() {
 		os.RemoveAll(tmp)

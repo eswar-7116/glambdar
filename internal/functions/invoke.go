@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/docker"
+	"github.com/moby/moby/api/pkg/stdcopy"
 )
 
 type InvokeRequest struct {
@@ -128,6 +130,22 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 		if err := json.NewDecoder(conn).Decode(&res); err != nil {
 			return InvokeResponse{}, err
 		}
+
+		out, err := d.ContainerLogs(ctx, containerID, md.LastInvokedAt.Format(time.RFC3339))
+		if err != nil {
+			return InvokeResponse{}, err
+		}
+
+		var stdout, stderr bytes.Buffer
+		stdcopy.StdCopy(&stdout, &stderr, out)
+
+		// Save to DB
+		SaveLog(&Log{
+			FuncName:  funcName,
+			InvokedAt: md.LastInvokedAt,
+			Stdout:    stdout.String(),
+			Stderr:    stderr.String(),
+		})
 
 		return res, nil
 

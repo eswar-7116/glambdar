@@ -25,7 +25,7 @@ func Init() {
 		os.Exit(1)
 	}
 
-	if err := config.DB.AutoMigrate(&functions.Metadata{}); err != nil {
+	if err := config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{}); err != nil {
 		fmt.Println("Failed to migrate database schema:", err)
 		os.Exit(1)
 	}

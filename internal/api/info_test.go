@@ -23,7 +23,7 @@ func TestInfoHandler(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	config.InitPathsWithBase(tempDir)
-	config.DB.AutoMigrate(&functions.Metadata{})
+	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 
 	// Create a dummy function directory with metadata
 	funcName := "testfunc"

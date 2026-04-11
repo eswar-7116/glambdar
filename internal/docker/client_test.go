@@ -12,6 +12,7 @@ type MockDockerAPI struct {
 	ContainerStartFunc  func(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error)
 	ContainerKillFunc   func(ctx context.Context, containerID string, options client.ContainerKillOptions) (client.ContainerKillResult, error)
 	ContainerRemoveFunc func(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error)
+	ContainerLogsFunc   func(ctx context.Context, containerID string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error)
 	CloseFunc           func() error
 	ImagePullFunc       func(ctx context.Context, refStr string, options client.ImagePullOptions) (client.ImagePullResponse, error)
 	ImageInspectFunc    func(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (client.ImageInspectResult, error)
@@ -45,6 +46,10 @@ func (m *MockDockerAPI) ContainerKill(ctx context.Context, containerID string, o
 
 func (m *MockDockerAPI) ContainerRemove(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error) {
 	return m.ContainerRemoveFunc(ctx, containerID, options)
+}
+
+func (m *MockDockerAPI) ContainerLogs(ctx context.Context, containerID string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
+	return m.ContainerLogsFunc(ctx, containerID, options)
 }
 
 func (m *MockDockerAPI) Close() error {

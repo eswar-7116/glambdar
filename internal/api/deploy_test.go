@@ -24,7 +24,7 @@ func TestDeployHandler(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	config.InitPathsWithBase(tempDir)
-	config.DB.AutoMigrate(&functions.Metadata{})
+	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 
 	router := Router()
 

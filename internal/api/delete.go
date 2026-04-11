@@ -44,6 +44,12 @@ func deleteFuncHandler(c *gin.Context) {
 		return
 	}
 
+	err = functions.DeleteLogsByFunction(name)
+	if err != nil {
+		log.Printf("ERROR deleting function logs of '%s': %s\n", name, err)
+		// We don't return here because files and metadata are already gone
+	}
+
 	c.JSON(http.StatusNoContent, gin.H{
 		"deleted": name,
 	})

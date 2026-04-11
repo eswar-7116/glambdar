@@ -22,14 +22,27 @@ func TestDeleteHandler(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	config.InitPathsWithBase(tempDir)
-	config.DB.AutoMigrate(&functions.Metadata{})
+	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 
-	// Create a dummy function directory
+	// Create a dummy function directory and metadata
 	funcName := "testfunc"
 	funcDir := filepath.Join(tempDir, "functions", funcName)
 	os.MkdirAll(funcDir, 0755)
+	functions.SaveMetadata(&functions.Metadata{Name: funcName})
+
+	// Create a mock log
+	functions.SaveLog(&functions.Log{
+		FuncName: funcName,
+		Stdout:   "hello",
+	})
 
 	router := Router()
+
+	// Verify log exists
+	logs, _ := functions.GetLogsByFunction(funcName)
+	if len(logs) == 0 {
+		t.Fatalf("expected log to exist before deletion")
+	}
 
 	// Test case: Delete existing function
 	req, _ := http.NewRequest("DELETE", "/del/"+funcName, nil)
@@ -42,6 +55,12 @@ func TestDeleteHandler(t *testing.T) {
 
 	if _, err := os.Stat(funcDir); !os.IsNotExist(err) {
 		t.Errorf("expected function directory to be deleted, but it still exists")
+	}
+
+	// Verify log is deleted
+	logs, _ = functions.GetLogsByFunction(funcName)
+	if len(logs) != 0 {
+		t.Errorf("expected logs to be deleted, but found %d logs", len(logs))
 	}
 
 	// Test case: Delete non-existing function
