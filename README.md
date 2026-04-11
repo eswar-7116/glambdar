@@ -11,37 +11,33 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 1. A function is uploaded as a zip file
 2. The zip is extracted into a function-specific directory
 3. On invocation:
+   - A warm Docker container is acquired from the pool (or a new one started)
+   - The function code is mounted
+   - A Node.js worker executes the function
+   - Communication between runtime and worker happens via Unix Domain Sockets (UDS)
+   - After execution, the container is returned to the pool for reuse
 
-   * A new Docker container is started
-   * The function code is mounted
-   * A Node.js worker executes the function
-   * Communication between runtime and worker happens via Unix Domain Sockets (UDS)
 4. The response is returned to the client
-5. Metadata is tracked for each function
+5. Metadata and execution logs are tracked in a SQLite database for each function
 6. Functions can be queried or deleted via API routes
 
 ---
 
 ## Requirements
 
-* **Docker**
-* **Unix-based Environment** (Linux/macOS)
+- **Docker**
+- **Unix-based Environment** (Linux/macOS)
   > UDS is used for IPC, so Windows is not supported natively
-* **Go** (for building the runtime)
-* **Node.js** (inside Docker container, managed by the Node.js container image)
+- **Go** (for building the runtime)
+- **Node.js** (inside Docker container, managed by the Node.js container image)
 
 ---
 
 ## Environment Setup
 
-You **must** set the Glambdar base directory before running:
+- Glambdar relies on Docker for function isolation. Ensure the Docker daemon is running before starting the runtime.
 
-```bash
-export GLAMBDAR_DIR="/absolute/path/to/glambdar"
-```
-> Add this to your shell’s RC file (e.g. `.bashrc`, `.zshrc`) to make it available in all new shell sessions.
-
-* Glambdar relies on Docker for function isolation. Ensure the Docker daemon is running before starting the runtime.
+- The runtime will automatically create a `.glambdar` directory in your user home directory to store functions, logs, and metadata.
 
 ---
 
@@ -102,7 +98,13 @@ curl http://localhost:8000/info
 curl http://localhost:8000/info/myfunc
 ```
 
-### 7. Delete a function
+### 7. Get function logs
+
+```bash
+curl http://localhost:8000/logs/myfunc
+```
+
+### 8. Delete a function
 
 ```bash
 curl -X DELETE http://localhost:8000/del/myfunc
@@ -118,9 +120,9 @@ curl -X DELETE http://localhost:8000/del/myfunc
 POST /deploy
 ```
 
-* Upload a zip file
-* Glambdar extracts the zip file into `GLAMBDAR_DIR/functions/<name>`
-* Initializes metadata
+- Upload a zip file
+- Glambdar extracts the zip file into `GLAMBDAR_DIR/functions/<name>`
+- Initializes metadata
 
 ### Invoke a function
 
@@ -128,10 +130,18 @@ POST /deploy
 POST /invoke/:name
 ```
 
-* Runs the function in an isolated Docker container
-* One container per invocation
-* Uses UDS for runtime-worker communication
-> All invocations are **HTTP POST requests**.
+- Runs the function in an isolated Docker container
+- Uses a warm container pool for subsequent faster invocations
+- Uses UDS for runtime-worker communication
+  > All invocations are **HTTP POST requests**.
+
+### Get function logs
+
+```
+GET /logs/:name
+```
+
+- Returns stdout and stderr execution logs for a single function
 
 ### List all functions
 
@@ -139,7 +149,7 @@ POST /invoke/:name
 GET /info
 ```
 
-* Returns metadata for all deployed functions
+- Returns metadata for all deployed functions
 
 ### Get function details
 
@@ -147,7 +157,7 @@ GET /info
 GET /info/:name
 ```
 
-* Returns metadata for a single function
+- Returns metadata for a single function
 
 ### Delete a function
 
@@ -155,7 +165,7 @@ GET /info/:name
 DELETE /del/:name
 ```
 
-* Removes function code and metadata
+- Removes function code, metadata, and logs
 
 ---
 
@@ -165,23 +175,23 @@ Each deployed function **must** export a `handler` function from an `index.js` f
 
 ### Requirements
 
-* File name must be **`index.js`**
-* The entry point must be **`exports.handler`**
-* The handler must be an **async function**
-* The handler receives the request object described below in the [Function Request Format](#function-request-format) section
+- File name must be **`index.js`**
+- The entry point must be **`exports.handler`**
+- The handler must be an **async function**
+- The handler receives the request object described below in the [Function Request Format](#function-request-format) section
 
 ### Example
 
 ```js
 exports.handler = async (req) => {
-    const jsonData = await req.json();
+  const jsonData = await req.json();
 
-    return {
-        statusCode: 200,
-        body: {
-            message: `Hello ${jsonData.name}!`
-        }
-    };
+  return {
+    statusCode: 200,
+    body: {
+      message: `Hello ${jsonData.name}!`,
+    },
+  };
 };
 ```
 
@@ -201,9 +211,9 @@ If `handler` is missing or `index.js` is not present, the invocation will fail.
 
 Inside the function:
 
-* `req.headers`: request headers
-* `req.body`: raw body string
-* `await req.json()`: parsed JSON body
+- `req.headers`: request headers
+- `req.body`: raw body string
+- `await req.json()`: parsed JSON body
 
 ---
 
@@ -217,17 +227,17 @@ Inside the function:
 }
 ```
 
-* `statusCode` *(optional)* is the HTTP status code of the response (default: `200`)
-* `headers` *(optional)* is the response headers
-* `body` can be any JSON-serializable value
-* Returned as the HTTP response body
+- `statusCode` _(optional)_ is the HTTP status code of the response (default: `200`)
+- `headers` _(optional)_ is the response headers
+- `body` can be any JSON-serializable value
+- Returned as the HTTP response body
 
 ---
 
 ## Testing
 
-* **Unit tests** run by default
-* **Integration tests** (Docker-dependent) are skipped unless enabled
+- **Unit tests** run by default
+- **Integration tests** (Docker-dependent) are skipped unless enabled
 
 Run only unit tests locally:
 
@@ -243,11 +253,31 @@ RUN_INTEGRATION_TESTS=1 go test ./...
 
 ---
 
+## Performance Benchmarks
+
+Glambdar is optimized for low-latency function execution using persistent per-function container pools and Unix Domain Socket (UDS) IPC.
+
+| Metric                       | Result           |
+| ---------------------------- | ---------------- |
+| **Cold Start Latency**       | **~590 ms**      |
+| **Warm Start Latency (Avg)** | **~1.6 ms**      |
+| **Warm Throughput**          | **~1,000 req/s** |
+
+**Benchmark Environment**
+
+- Local Linux environment
+- Intel i7 13th Gen, 16GB RAM
+- Simple "ping" function returning static JSON
+- Warm latency measured after worker/container initialization
+- Throughput measured under concurrent warm load
+
+---
+
 ## Design choices
 
-* **Docker per invocation** for strong isolation
-* **UDS over TCP** for low-latency IPC
-* Simple IPC protocol (structured JSON)
+- **Persistent Docker container pool** for reduced latency and auto-scaling
+- **UDS over TCP** for low-latency IPC
+- Simple IPC protocol (structured JSON)
 
 ---
 
