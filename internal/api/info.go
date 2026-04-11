@@ -3,10 +3,7 @@ package api
 import (
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 
-	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
 	"github.com/gin-gonic/gin"
 )
@@ -17,23 +14,13 @@ func registerInfoRoutes(router *gin.Engine) {
 }
 
 func infoHandler(c *gin.Context) {
-	entries, err := os.ReadDir(config.FunctionsDir)
+	deployedFunctions, err := functions.GetAllMetadata()
 	if err != nil {
-		log.Println("ERROR reading functions directory:", err)
+		log.Println("ERROR loading all metadata:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to read functions directory",
+			"error": "Failed to load function metadata",
 		})
 		return
-	}
-
-	var deployedFunctions []functions.Metadata
-	for _, entry := range entries {
-		md, err := functions.LoadMetadata(filepath.Join(config.FunctionsDir, entry.Name()))
-		if err != nil {
-			log.Println("ERROR reading function metadata of", entry.Name()+":", err)
-			continue
-		}
-		deployedFunctions = append(deployedFunctions, *md)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -45,18 +32,12 @@ func infoHandler(c *gin.Context) {
 func functionInfoHandler(c *gin.Context) {
 	name := c.Param("name")
 
-	md, err := functions.LoadMetadata(filepath.Join(config.FunctionsDir, name))
+	md, err := functions.LoadMetadata(name)
 	if err != nil {
-		if os.IsNotExist(err) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Function not found!",
-			})
-		} else {
-			log.Printf("ERROR reading function '%s' details: %s", name, err)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Error reading function details!",
-			})
-		}
+		log.Printf("ERROR reading function '%s' details: %s", name, err)
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Function not found!",
+		})
 		return
 	}
 

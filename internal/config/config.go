@@ -6,6 +6,8 @@ import (
 
 	"github.com/eswar-7116/glambdar/internal/docker"
 	"github.com/eswar-7116/glambdar/internal/pool"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 var (
@@ -15,6 +17,7 @@ var (
 	UDSPath      = "/tmp/glambdar.sock"
 	DockerClient = &docker.Docker{}
 	PoolManager  = &pool.PoolManager{}
+	DB           *gorm.DB
 )
 
 func InitPaths() error {
@@ -38,6 +41,13 @@ func InitPathsWithBase(baseDir string) error {
 	if err != nil {
 		return err
 	}
+
+	dbPath := filepath.Join(ConfigDir, "glambdar.db")
+	DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		return err
+	}
+	DB.Exec("PRAGMA journal_mode=WAL;")
 
 	return nil
 }

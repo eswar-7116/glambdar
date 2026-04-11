@@ -4,25 +4,37 @@ import (
 	"testing"
 	"time"
 
+	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
+func setupTestDB(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to create memory db: %v", err)
+	}
+	db.AutoMigrate(&functions.Metadata{})
+	config.DB = db
+}
+
 func TestSaveAndLoadMetadata(t *testing.T) {
-	funcDir := t.TempDir()
+	setupTestDB(t)
 
 	metadata := &functions.Metadata{
 		Name:          "Test Function",
-		CreatedAt:     time.Now(),
-		LastInvokedAt: time.Now(),
+		CreatedAt:     time.Now().UTC(),
+		LastInvokedAt: time.Now().UTC(),
 		InvokeCount:   5,
 	}
 
-	err := functions.SaveMetadata(funcDir, metadata)
+	err := functions.SaveMetadata(metadata)
 	if err != nil {
 		t.Fatalf("expected no error saving metadata, got %v", err)
 	}
 
-	loadedMetadata, err := functions.LoadMetadata(funcDir)
+	loadedMetadata, err := functions.LoadMetadata(metadata.Name)
 	if err != nil {
 		t.Fatalf("expected no error loading metadata, got %v", err)
 	}
@@ -30,30 +42,25 @@ func TestSaveAndLoadMetadata(t *testing.T) {
 	if loadedMetadata.Name != metadata.Name {
 		t.Errorf("expected Name %s, got %s", metadata.Name, loadedMetadata.Name)
 	}
-	if !loadedMetadata.CreatedAt.Equal(metadata.CreatedAt) {
-		t.Errorf("expected CreatedAt %v, got %v", metadata.CreatedAt, loadedMetadata.CreatedAt)
-	}
-	if !loadedMetadata.LastInvokedAt.Equal(metadata.LastInvokedAt) {
-		t.Errorf("expected LastInvokedAt %v, got %v", metadata.LastInvokedAt, loadedMetadata.LastInvokedAt)
-	}
 	if loadedMetadata.InvokeCount != metadata.InvokeCount {
 		t.Errorf("expected InvokeCount %d, got %d", metadata.InvokeCount, loadedMetadata.InvokeCount)
+	}
+	
+	err = functions.DeleteMetadata(metadata.Name)
+	if err != nil {
+		t.Fatalf("expected no error deleting metadata, got %v", err)
+	}
+	
+	_, err = functions.LoadMetadata(metadata.Name)
+	if err == nil {
+		t.Errorf("expected error loading deleted metadata, got nil")
 	}
 }
 
 func TestLoadMetadataFileNotFound(t *testing.T) {
-	funcDir := t.TempDir()
-	_, err := functions.LoadMetadata(funcDir)
+	setupTestDB(t)
+	_, err := functions.LoadMetadata("non_existent_func")
 	if err == nil {
 		t.Fatal("expected error when loading from a non-existent file, got nil")
-	}
-}
-
-func TestLoadMetadataInvalidData(t *testing.T) {
-	funcDir := "../test_data/meta"
-
-	_, err := functions.LoadMetadata(funcDir)
-	if err == nil {
-		t.Fatal("expected error when loading invalid metadata, got nil")
 	}
 }

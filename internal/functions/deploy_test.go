@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
@@ -15,8 +17,16 @@ func TestDeploy_CreatesFunctionAndMetadata(t *testing.T) {
 	tmp := t.TempDir()
 	config.FunctionsDir = tmp
 
+	// setup test db
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to create memory db: %v", err)
+	}
+	db.AutoMigrate(&functions.Metadata{})
+	config.DB = db
+
 	t.Log("Deploying...")
-	err := functions.Deploy(validZipFile, "testFunc")
+	err = functions.Deploy(validZipFile, "testFunc")
 	if err != nil {
 		t.Fatalf("deploy failed: %v", err)
 	}
@@ -26,7 +36,7 @@ func TestDeploy_CreatesFunctionAndMetadata(t *testing.T) {
 		t.Fatalf("function directory not created")
 	}
 
-	md, err := functions.LoadMetadata(funcDir)
+	md, err := functions.LoadMetadata("testFunc")
 	if err != nil {
 		t.Fatalf("metadata not created")
 	}

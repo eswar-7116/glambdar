@@ -1,41 +1,38 @@
 package functions
 
 import (
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"time"
+
+	"github.com/eswar-7116/glambdar/internal/config"
 )
 
 type Metadata struct {
-	Name          string    `json:"name"`
+	Name          string    `json:"name" gorm:"primaryKey"`
 	CreatedAt     time.Time `json:"createdAt"`
 	LastInvokedAt time.Time `json:"lastInvokedAt"`
 	InvokeCount   int       `json:"invokeCount"`
 }
 
-func metaPath(funcDir string) string {
-	return filepath.Join(funcDir, "meta.json")
-}
-
-func LoadMetadata(funcDir string) (*Metadata, error) {
-	path := metaPath(funcDir)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
+func LoadMetadata(funcName string) (*Metadata, error) {
 	var m Metadata
-	if err := json.Unmarshal(data, &m); err != nil {
+	if err := config.DB.First(&m, "name = ?", funcName).Error; err != nil {
 		return nil, err
 	}
 	return &m, nil
 }
 
-func SaveMetadata(funcDir string, m *Metadata) error {
-	path := metaPath(funcDir)
-	bytes, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return err
+func SaveMetadata(m *Metadata) error {
+	return config.DB.Save(m).Error
+}
+
+func DeleteMetadata(funcName string) error {
+	return config.DB.Delete(&Metadata{}, "name = ?", funcName).Error
+}
+
+func GetAllMetadata() ([]Metadata, error) {
+	var m []Metadata
+	if err := config.DB.Find(&m).Error; err != nil {
+		return nil, err
 	}
-	return os.WriteFile(path, bytes, 0644)
+	return m, nil
 }

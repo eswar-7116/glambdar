@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/eswar-7116/glambdar/internal/config"
+	"github.com/eswar-7116/glambdar/internal/functions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -30,6 +31,15 @@ func deleteFuncHandler(c *gin.Context) {
 		log.Printf("ERROR deleteing function files of '%s': %s\n", funcDir, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to remove function files",
+		})
+		return
+	}
+
+	err = functions.DeleteMetadata(name)
+	if err != nil {
+		log.Printf("ERROR deleting function metadata of '%s': %s\n", name, err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to remove function metadata",
 		})
 		return
 	}

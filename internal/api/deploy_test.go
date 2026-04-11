@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/eswar-7116/glambdar/internal/config"
+	"github.com/eswar-7116/glambdar/internal/functions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,6 +24,7 @@ func TestDeployHandler(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	config.InitPathsWithBase(tempDir)
+	config.DB.AutoMigrate(&functions.Metadata{})
 
 	router := Router()
 

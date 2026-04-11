@@ -12,6 +12,7 @@ import (
 
 	"github.com/eswar-7116/glambdar/internal/api"
 	"github.com/eswar-7116/glambdar/internal/config"
+	"github.com/eswar-7116/glambdar/internal/functions"
 )
 
 const PORT = "8000"
@@ -21,6 +22,11 @@ func Init() {
 	if err := config.InitPaths(); err != nil {
 		fmt.Println(err.Error())
 		fmt.Println("Please make sure you defined GLAMBDAR_DIR in the environment.")
+		os.Exit(1)
+	}
+
+	if err := config.DB.AutoMigrate(&functions.Metadata{}); err != nil {
+		fmt.Println("Failed to migrate database schema:", err)
 		os.Exit(1)
 	}
 }

@@ -23,6 +23,7 @@ func TestInfoHandler(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	config.InitPathsWithBase(tempDir)
+	config.DB.AutoMigrate(&functions.Metadata{})
 
 	// Create a dummy function directory with metadata
 	funcName := "testfunc"
@@ -32,7 +33,7 @@ func TestInfoHandler(t *testing.T) {
 	md := &functions.Metadata{
 		Name: funcName,
 	}
-	functions.SaveMetadata(funcDir, md)
+	functions.SaveMetadata(md)
 
 	router := Router()
 

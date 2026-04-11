@@ -94,13 +94,15 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 	}
 
 	// Update function metadata
-	md, err := LoadMetadata(funcDir)
+	md, err := LoadMetadata(funcName)
 	if err != nil {
 		return InvokeResponse{}, err
 	}
 	md.LastInvokedAt = time.Now().UTC()
 	md.InvokeCount++
-	SaveMetadata(funcDir, md)
+	if err := SaveMetadata(md); err != nil {
+		log.Println("ERROR saving metadata:", err)
+	}
 
 	connCh := make(chan *net.UnixConn, 1)
 
