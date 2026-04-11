@@ -37,5 +37,12 @@ func init() {
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		arg := os.Args[1]
+		if arg == "--version" || arg == "-v" || arg == "version" {
+			fmt.Printf("glambdar version %s\n", glambdar.VERSION)
+			return
+		}
+	}
 	glambdar.Start()
 }

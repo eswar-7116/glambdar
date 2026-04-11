@@ -15,6 +15,7 @@ import (
 	"github.com/eswar-7116/glambdar/internal/functions"
 )
 
+const VERSION = "2.0.0"
 const PORT = "8000"
 
 func Init() {
