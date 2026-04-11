@@ -39,21 +39,40 @@ func Start() {
 		}
 	}()
 
+	// Context for eviction goroutine
+	evictCtx, evictCancel := context.WithCancel(context.Background())
+	defer evictCancel()
+
+	// Start CRON job to clean stale containers
+	cronTicker := time.NewTicker(30 * time.Second)
+	defer cronTicker.Stop()
+
+	go func() {
+		for range cronTicker.C {
+			config.PoolManager.RemoveStaleContainers(evictCtx, config.DockerClient, 10*time.Minute)
+		}
+	}()
+
 	// Signal handling
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	<-stop
 
+	// Graceful HTTP shutdown with timeout
 	fmt.Println("\nShutting down server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
-		fmt.Println("Server Shutdown Failed:", err)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		fmt.Println("Server shutdown failed:", err)
 	}
 
-	config.PoolManager.DeleteAllContainers(ctx, config.DockerClient)
+	// Clean up all containers
+	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cleanupCancel()
+
+	config.PoolManager.DeleteAllContainers(cleanupCtx, config.DockerClient)
 
 	if err := config.DockerClient.Close(); err != nil {
 		fmt.Printf("Error closing Docker client: %v\n", err)
