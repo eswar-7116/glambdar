@@ -11,6 +11,7 @@ type Metadata struct {
 	CreatedAt     time.Time `json:"createdAt"`
 	LastInvokedAt time.Time `json:"lastInvokedAt"`
 	InvokeCount   int       `json:"invokeCount"`
+	RateLimit     int       `json:"rateLimit" gorm:"default:0"` // 0 = unlimited
 }
 
 func LoadMetadata(funcName string) (*Metadata, error) {

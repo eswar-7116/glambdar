@@ -123,6 +123,16 @@ POST /deploy
 - Upload a zip file
 - Glambdar extracts the zip file into `GLAMBDAR_DIR/functions/<name>`
 - Initializes metadata
+- **Optional**: `rateLimit` (form field) - set a maximum requests per second for this function (default: `0` for unlimited)
+
+### Configure a function
+
+```
+POST /config/:name
+```
+
+- **Body**: `{"rateLimit": number}`
+- Updates the rate limit for a deployed function in real-time without redeploying.
 
 ### Invoke a function
 
@@ -260,8 +270,8 @@ Glambdar is optimized for low-latency function execution using persistent per-fu
 | Metric                       | Result           |
 | ---------------------------- | ---------------- |
 | **Cold Start Latency**       | **~590 ms**      |
-| **Warm Start Latency (Avg)** | **~1.6 ms**      |
-| **Warm Throughput**          | **~1,000 req/s** |
+| **Warm Start Latency (Avg)** | **~1.3 ms**      |
+| **Warm Throughput**          | **~1,100 req/s** |
 
 **Benchmark Environment**
 

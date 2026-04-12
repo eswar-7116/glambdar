@@ -8,17 +8,44 @@ import (
 	"time"
 
 	"github.com/eswar-7116/glambdar/internal/docker"
+	"golang.org/x/time/rate"
 )
 
 type PoolManager struct {
 	pools sync.Map // funcName -> *ContainerPool
 }
 
-func (pm *PoolManager) GetOrCreate(funcName string) *ContainerPool {
+func (pm *PoolManager) GetOrCreate(funcName string, rateLimit int) *ContainerPool {
 	p, _ := pm.pools.LoadOrStore(funcName, &ContainerPool{
-		idle: make(chan entry, 10),
+		idle:    make(chan entry, 10),
+		Limiter: newLimiter(rateLimit),
 	})
 	return p.(*ContainerPool)
+}
+
+func (pm *PoolManager) UpdateLimiter(funcName string, rateLimit int) {
+	if val, ok := pm.pools.Load(funcName); ok {
+		p := val.(*ContainerPool)
+		limit, burst := parseRateLimit(rateLimit)
+		p.Limiter.SetLimit(limit)
+		p.Limiter.SetBurst(burst)
+	}
+}
+
+func newLimiter(rateLimit int) *rate.Limiter {
+	limit, burst := parseRateLimit(rateLimit)
+	return rate.NewLimiter(limit, burst)
+}
+
+func parseRateLimit(rateLimit int) (rate.Limit, int) {
+	if rateLimit <= 0 {
+		return rate.Inf, 1e9 // unlimited burst
+	}
+	burst := rateLimit / 10
+	if burst < 1 {
+		burst = 1
+	}
+	return rate.Limit(rateLimit), burst
 }
 
 func (pm *PoolManager) Delete(funcName string) {

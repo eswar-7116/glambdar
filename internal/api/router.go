@@ -11,6 +11,7 @@ func Router() *gin.Engine {
 	registerInfoRoutes(router)
 	registerDeleteRoutes(router)
 	registerLogRoutes(router)
+	registerConfigRoutes(router)
 
 	return router
 }

@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func Deploy(zipFilePath string, funcName string) error {
+func Deploy(zipFilePath string, funcName string, rateLimit int) error {
 	// Check if a function with this name already exists
 	_, err := LoadMetadata(funcName)
 	if err == nil {
@@ -29,6 +29,7 @@ func Deploy(zipFilePath string, funcName string) error {
 		Name:        funcName,
 		CreatedAt:   time.Now().UTC(),
 		InvokeCount: 0,
+		RateLimit:   rateLimit,
 	}
 	if err := SaveMetadata(&meta); err != nil {
 		return err

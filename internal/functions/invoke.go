@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -15,6 +16,8 @@ import (
 	"github.com/eswar-7116/glambdar/internal/docker"
 	"github.com/moby/moby/api/pkg/stdcopy"
 )
+
+var ErrRateLimited = errors.New("rate limit exceeded")
 
 type InvokeRequest struct {
 	Headers map[string]string `json:"headers"`
@@ -42,8 +45,18 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 		return InvokeResponse{}, fmt.Errorf("%s is not a directory", funcDir)
 	}
 
+	// Load metadata
+	md, err := LoadMetadata(funcName)
+	if err != nil {
+		return InvokeResponse{}, err
+	}
+
 	// Acquire a warm container or create a new one
-	p := config.PoolManager.GetOrCreate(funcName)
+	p := config.PoolManager.GetOrCreate(funcName, md.RateLimit)
+	if !p.Limiter.Allow() {
+		return InvokeResponse{}, ErrRateLimited
+	}
+
 	containerID, socketPath, warm := p.Acquire()
 	if !warm {
 		// Generate a per-container socket directory on the host
@@ -83,11 +96,6 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 		}
 	}()
 
-	// Update function metadata
-	md, err := LoadMetadata(funcName)
-	if err != nil {
-		return InvokeResponse{}, err
-	}
 	md.LastInvokedAt = time.Now().UTC()
 	md.InvokeCount++
 	if err := SaveMetadata(md); err != nil {

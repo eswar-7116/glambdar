@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.1.0] - 2026-04-12
+
+### Features
+- **Per-Function Rate Limiting**: Added support for setting a maximum requests per second limit during function deployment.
+- **Dynamic Configuration**: New `POST /config/:name` endpoint allowing real-time updates to function rate limits without redeploying.
+- **Intelligent Burst Scaling**: Implemented a burst logic that scales at 10% of the rate limit to provide better throughput management.
+
+### Performance
+- **Warm Throughput**: Increased to **~1,100 req/s**.
+- **Warm Start Latency**: Improved to **~1.3 ms**.
+
+### Documentation & Tests
+- Updated README with new API documentation and latest benchmark results.
+- Added comprehensive unit and integration tests for rate limiting and configuration management.
+
+---
+
 ## [v2.0.0] - 2026-04-11
 
 ### Features

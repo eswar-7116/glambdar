@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -62,6 +63,12 @@ func invokeHandler(c *gin.Context) {
 	// Invoke function and get response object
 	resp, err := functions.Invoke(c, config.DockerClient, name, req)
 	if err != nil {
+		if errors.Is(err, functions.ErrRateLimited) {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "Rate limit exceeded. Please try again later.",
+			})
+			return
+		}
 		log.Println("ERROR:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Glambdar Server Error",

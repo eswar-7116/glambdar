@@ -58,7 +58,7 @@ func TestInvoke_HappyPath(t *testing.T) {
 
 	funcDir := filepath.Join(config.FunctionsDir, "valid")
 	if _, err := os.Stat(funcDir); os.IsNotExist(err) {
-		if err := functions.Deploy(validZipFile, "valid"); err != nil {
+		if err := functions.Deploy(validZipFile, "valid", 0); err != nil {
 			t.Fatalf("deploy failed: %v", err)
 		}
 	}

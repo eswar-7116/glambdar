@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/eswar-7116/glambdar/internal/config"
@@ -56,10 +57,20 @@ func deployHandler(c *gin.Context) {
 		return
 	}
 
+	// Parse rate limit
+	rateLimitStr := c.PostForm("rateLimit")
+	rateLimit := 0
+	if rateLimitStr != "" {
+		rl, err := strconv.Atoi(rateLimitStr)
+		if err == nil {
+			rateLimit = rl
+		}
+	}
+
 	// Deploy the function
-	if err := functions.Deploy(zipFilePath, funcName); err != nil {
+	if err := functions.Deploy(zipFilePath, funcName, rateLimit); err != nil {
 		log.Println("ERROR while deploying the function: " + err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check if function directory exists"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to deploy function: " + err.Error()})
 		return
 	}
 

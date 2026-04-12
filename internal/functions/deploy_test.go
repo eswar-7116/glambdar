@@ -29,7 +29,7 @@ func TestDeploy_CreatesFunctionAndMetadata(t *testing.T) {
 	config.DB = db
 
 	t.Log("Deploying...")
-	err = functions.Deploy(validZipFile, "testFunc")
+	err = functions.Deploy(validZipFile, "testFunc", 0)
 	if err != nil {
 		t.Fatalf("deploy failed: %v", err)
 	}

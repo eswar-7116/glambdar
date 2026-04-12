@@ -2,6 +2,8 @@ package pool
 
 import (
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 type entry struct {
@@ -11,7 +13,8 @@ type entry struct {
 }
 
 type ContainerPool struct {
-	idle chan entry
+	idle    chan entry
+	Limiter *rate.Limiter
 }
 
 func (p *ContainerPool) Acquire() (containerID string, socketPath string, warm bool) {
