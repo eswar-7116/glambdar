@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Glambdar Logo" width="200">
+</p>
+
 # Glambdar
 
 Glambdar is a minimal serverless function runtime written in Go for executing Node.js functions with Docker-based isolation.
