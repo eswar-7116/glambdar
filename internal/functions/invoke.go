@@ -14,6 +14,7 @@ import (
 
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/docker"
+	"github.com/eswar-7116/glambdar/internal/pool"
 	"github.com/moby/moby/api/pkg/stdcopy"
 )
 
@@ -28,6 +29,7 @@ type InvokeResponse struct {
 	StatusCode int               `json:"statusCode"`
 	Headers    map[string]string `json:"headers"`
 	Body       json.RawMessage   `json:"body"`
+	ColdStart  bool              `json:"coldStart"`
 }
 
 func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRequest) (InvokeResponse, error) {
@@ -52,12 +54,12 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 	}
 
 	// Acquire a warm container or create a new one
-	p := config.PoolManager.GetOrCreate(funcName, md.RateLimit)
+	p := config.PoolManager.GetOrCreate(funcName, md.RateLimit, md.MaxConcurrency)
 	if !p.Limiter.Allow() {
 		return InvokeResponse{}, ErrRateLimited
 	}
 
-	containerID, socketPath, warm := p.Acquire()
+	e, warm := p.Acquire()
 	if !warm {
 		// Generate a per-container socket directory on the host
 		socketDir, err := os.MkdirTemp("", "glambdar-sock-*")
@@ -65,34 +67,39 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 			return InvokeResponse{}, fmt.Errorf("failed to create socket dir: %w", err)
 		}
 		os.Chmod(socketDir, 0777)
-		socketPath = socketDir
 
-		containerID, err = d.ContainerCreate(ctx, funcDir, socketPath)
+		containerID, err := d.ContainerCreate(ctx, funcDir, socketDir)
 		if err != nil {
-			os.RemoveAll(socketPath)
+			os.RemoveAll(socketDir)
 			return InvokeResponse{}, fmt.Errorf("failed to create container: %w", err)
 		}
 
 		// Start the container
 		if err := d.ContainerStart(ctx, containerID); err != nil {
-			os.RemoveAll(socketPath)
+			os.RemoveAll(socketDir)
 			return InvokeResponse{}, fmt.Errorf("failed to start container: %w", err)
 		}
 
 		// Wait for the worker's UDS server to become ready
-		workerSock := filepath.Join(socketPath, "glambdar.sock")
+		workerSock := filepath.Join(socketDir, "glambdar.sock")
 		if err := waitForSocket(workerSock, 5*time.Second); err != nil {
 			d.ContainerKill(ctx, containerID)
-			os.RemoveAll(socketPath)
+			os.RemoveAll(socketDir)
 			return InvokeResponse{}, fmt.Errorf("worker socket not ready: %w", err)
+		}
+
+		e = &pool.Entry{
+			ContainerID:    containerID,
+			SocketPath:     socketDir,
+			ActiveRequests: 1, // this current request
 		}
 	}
 
 	// Release container back to pool (or kill if pool is full) on return
 	defer func() {
-		if !p.Release(containerID, socketPath) {
-			d.ContainerKill(ctx, containerID)
-			os.RemoveAll(socketPath)
+		if !p.Release(e) {
+			d.ContainerKill(ctx, e.ContainerID)
+			os.RemoveAll(e.SocketPath)
 		}
 	}()
 
@@ -103,7 +110,7 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 	}
 
 	// Dial the container's UDS and send the request
-	workerSock := filepath.Join(socketPath, "glambdar.sock")
+	workerSock := filepath.Join(e.SocketPath, "glambdar.sock")
 	conn, err := net.DialTimeout("unix", workerSock, 5*time.Second)
 	if err != nil {
 		return InvokeResponse{}, fmt.Errorf("failed to dial worker socket: %w", err)
@@ -127,7 +134,7 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 	}
 
 	// Process logs
-	out, err := d.ContainerLogs(ctx, containerID, md.LastInvokedAt.Format(time.RFC3339))
+	out, err := d.ContainerLogs(ctx, e.ContainerID, md.LastInvokedAt.Format(time.RFC3339))
 	if err == nil {
 		defer out.Close()
 		var stdout, stderr bytes.Buffer
@@ -142,6 +149,7 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 		})
 	}
 
+	res.ColdStart = !warm
 	return res, nil
 }
 

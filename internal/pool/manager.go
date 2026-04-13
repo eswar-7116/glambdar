@@ -15,10 +15,11 @@ type PoolManager struct {
 	pools sync.Map // funcName -> *ContainerPool
 }
 
-func (pm *PoolManager) GetOrCreate(funcName string, rateLimit int) *ContainerPool {
+func (pm *PoolManager) GetOrCreate(funcName string, rateLimit int, maxConcurrency int32) *ContainerPool {
 	p, _ := pm.pools.LoadOrStore(funcName, &ContainerPool{
-		idle:    make(chan entry, 10),
-		Limiter: newLimiter(rateLimit),
+		Idle:           make(chan *Entry, 10),
+		Limiter:        newLimiter(rateLimit),
+		MaxConcurrency: maxConcurrency,
 	})
 	return p.(*ContainerPool)
 }
@@ -57,12 +58,12 @@ func (pm *PoolManager) DeleteAllContainers(ctx context.Context, d *docker.Docker
 		p := val.(*ContainerPool)
 		for {
 			select {
-			case e := <-p.idle:
-				err := d.ContainerRemove(ctx, e.containerID)
+			case e := <-p.Idle:
+				err := d.ContainerRemove(ctx, e.ContainerID)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to delete container (%s): %s\n", e.containerID[:12], err)
+					fmt.Fprintf(os.Stderr, "Failed to delete container (%s): %s\n", e.ContainerID[:12], err)
 				}
-				os.RemoveAll(e.socketPath)
+				os.RemoveAll(e.SocketPath)
 			default:
 				return true // pool drained, move to next
 			}
@@ -75,15 +76,15 @@ func (pm *PoolManager) RemoveStaleContainers(ctx context.Context, d *docker.Dock
 		p := val.(*ContainerPool)
 		for {
 			select {
-			case e := <-p.idle:
-				if time.Since(e.lastUsed) > ttl {
-					err := d.ContainerRemove(ctx, e.containerID)
+			case e := <-p.Idle:
+				if time.Since(e.LastUsed) > ttl {
+					err := d.ContainerRemove(ctx, e.ContainerID)
 					if err != nil {
-						fmt.Fprintf(os.Stderr, "Failed to remove stale container (%s): %s\n", e.containerID[:12], err)
+						fmt.Fprintf(os.Stderr, "Failed to remove stale container (%s): %s\n", e.ContainerID[:12], err)
 					}
-					os.RemoveAll(e.socketPath)
+					os.RemoveAll(e.SocketPath)
 				} else {
-					p.idle <- e
+					p.Idle <- e
 					return true
 				}
 			default:

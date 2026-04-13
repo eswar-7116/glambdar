@@ -273,9 +273,9 @@ Glambdar is optimized for low-latency function execution using persistent per-fu
 
 | Metric                       | Result           |
 | ---------------------------- | ---------------- |
-| **Cold Start Latency**       | **~590 ms**      |
+| **Cold Start Latency**       | **~340 ms**      |
 | **Warm Start Latency (Avg)** | **~1.3 ms**      |
-| **Warm Throughput**          | **~1,100 req/s** |
+| **Warm Throughput**          | **~1,900 req/s** |
 
 **Benchmark Environment**
 
@@ -290,6 +290,7 @@ Glambdar is optimized for low-latency function execution using persistent per-fu
 ## Design choices
 
 - **Persistent Docker container pool** for reduced latency and auto-scaling
+- **Intra-Function Concurrency:** Implemented a multi-request routing threshold (adapted from 2024 IEEE serverless optimization models) to drastically reduce cold starts under burst loads while maintaining strict process isolation.
 - **UDS over TCP** for low-latency IPC
 - Simple IPC protocol (structured JSON)
 

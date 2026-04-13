@@ -1,36 +1,70 @@
 package pool
 
 import (
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
 )
 
-type entry struct {
-	containerID string
-	socketPath  string
-	lastUsed    time.Time
+type Entry struct {
+	ContainerID    string
+	SocketPath     string
+	LastUsed       time.Time
+	ActiveRequests int32
+	InPool         int32 // atomic bool: 1 if in Idle channel, 0 otherwise
 }
 
 type ContainerPool struct {
-	idle    chan entry
-	Limiter *rate.Limiter
+	Idle           chan *Entry
+	Limiter        *rate.Limiter
+	MaxConcurrency int32
 }
 
-func (p *ContainerPool) Acquire() (containerID string, socketPath string, warm bool) {
+func (p *ContainerPool) Acquire() (entry *Entry, warm bool) {
+	if p.MaxConcurrency <= 0 {
+		p.MaxConcurrency = 10
+	}
+
 	select {
-	case e := <-p.idle:
-		return e.containerID, e.socketPath, true // got a warm container
+	case e := <-p.Idle:
+		atomic.StoreInt32(&e.InPool, 0)
+		active := atomic.AddInt32(&e.ActiveRequests, 1)
+		if active < p.MaxConcurrency {
+			// Still has capacity, try to put back in pool
+			if atomic.CompareAndSwapInt32(&e.InPool, 0, 1) {
+				select {
+				case p.Idle <- e:
+				default:
+					atomic.StoreInt32(&e.InPool, 0)
+				}
+			}
+		}
+		return e, true
 	default:
-		return "", "", false // pool empty, caller must spin up new one
+		return nil, false
 	}
 }
 
-func (p *ContainerPool) Release(containerID, socketPath string) bool {
-	select {
-	case p.idle <- entry{containerID, socketPath, time.Now()}:
-		return true // returned to pool
-	default:
-		return false // pool full, caller must kill
+func (p *ContainerPool) Release(e *Entry) bool {
+	if e == nil {
+		return false
 	}
+	newActive := atomic.AddInt32(&e.ActiveRequests, -1)
+	e.LastUsed = time.Now()
+
+	if newActive < p.MaxConcurrency {
+		// Try to put back in pool if not already there
+		if atomic.CompareAndSwapInt32(&e.InPool, 0, 1) {
+			select {
+			case p.Idle <- e:
+				return true
+			default:
+				atomic.StoreInt32(&e.InPool, 0)
+				return false // Pool full, caller should kill
+			}
+		}
+	}
+
+	return true
 }

@@ -26,10 +26,11 @@ func Deploy(zipFilePath string, funcName string, rateLimit int) error {
 
 	// Initialize function metadata
 	meta := Metadata{
-		Name:        funcName,
-		CreatedAt:   time.Now().UTC(),
-		InvokeCount: 0,
-		RateLimit:   rateLimit,
+		Name:           funcName,
+		CreatedAt:      time.Now().UTC(),
+		InvokeCount:    0,
+		RateLimit:      rateLimit,
+		MaxConcurrency: 10,
 	}
 	if err := SaveMetadata(&meta); err != nil {
 		return err
