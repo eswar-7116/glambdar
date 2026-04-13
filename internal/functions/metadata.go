@@ -12,6 +12,7 @@ type Metadata struct {
 	LastInvokedAt time.Time `json:"lastInvokedAt"`
 	InvokeCount   int       `json:"invokeCount"`
 	RateLimit     int       `json:"rateLimit" gorm:"default:0"` // 0 = unlimited
+	MaxConcurrency int32     `json:"maxConcurrency" gorm:"default:10"`
 }
 
 func LoadMetadata(funcName string) (*Metadata, error) {

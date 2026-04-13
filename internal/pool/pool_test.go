@@ -1,43 +1,139 @@
 package pool
 
 import (
+	"sync"
 	"testing"
 )
 
-func TestContainerPool_AcquireRelease(t *testing.T) {
+func TestContainerPool_AcquireRelease_SingleConcurrency(t *testing.T) {
 	p := &ContainerPool{
-		idle: make(chan entry, 2),
+		Idle:           make(chan *Entry, 2),
+		MaxConcurrency: 1,
 	}
 
 	// Try acquiring from empty pool
-	id, sock, ok := p.Acquire()
-	if ok || id != "" || sock != "" {
-		t.Errorf("Expected pool to be empty, got id=%q, sock=%q, ok=%v", id, sock, ok)
+	e, ok := p.Acquire()
+	if ok || e != nil {
+		t.Errorf("Expected pool to be empty, got e=%v, ok=%v", e, ok)
 	}
 
-	// Release to pool
-	ok = p.Release("container-1", "/tmp/glambdar-sock-1/")
-	if !ok {
-		t.Errorf("Expected release to succeed, pool not full")
+	// Create entry and add to pool
+	e1 := &Entry{ContainerID: "c1", SocketPath: "s1", ActiveRequests: 0, InPool: 1}
+	p.Idle <- e1
+
+	// Acquire
+	e, ok = p.Acquire()
+	if !ok || e != e1 {
+		t.Errorf("Expected to acquire e1, got ok=%v", ok)
+	}
+	if e.ActiveRequests != 1 {
+		t.Errorf("Expected 1 active request, got %d", e.ActiveRequests)
 	}
 
-	ok = p.Release("container-2", "/tmp/glambdar-sock-2/")
-	if !ok {
-		t.Errorf("Expected release to succeed, pool not full")
-	}
-
-	// Try releasing when full
-	ok = p.Release("container-3", "/tmp/glambdar-sock-3/")
+	// Check if pool is empty now (MaxConcurrency is 1)
+	e2, ok := p.Acquire()
 	if ok {
-		t.Errorf("Expected release to fail, pool is full")
+		t.Errorf("Expected pool to be empty (concurrency 1), got %v", e2)
 	}
 
-	// Acquire again from pool
-	id, sock, ok = p.Acquire()
-	if !ok {
-		t.Errorf("Expected successful acquire, but it failed")
+    // Release
+    p.Release(e)
+    if e.ActiveRequests != 0 {
+        t.Errorf("Expected 0 active requests, got %d", e.ActiveRequests)
+    }
+
+    // Acquire again
+    e, ok = p.Acquire()
+    if !ok || e != e1 {
+        t.Errorf("Expected to acquire again")
+    }
+}
+
+func TestContainerPool_HighConcurrency(t *testing.T) {
+	p := &ContainerPool{
+		Idle:           make(chan *Entry, 2),
+		MaxConcurrency: 10,
 	}
-	if (id != "container-1" && id != "container-2") || sock == "" {
-		t.Errorf("Expected id to be container-1 or container-2 with a socket path, got id=%q sock=%q", id, sock)
+
+	e1 := &Entry{ContainerID: "c1", SocketPath: "s1", ActiveRequests: 0, InPool: 1}
+	p.Idle <- e1
+
+	// Acquire multiple times
+	for i := 1; i <= 10; i++ {
+		e, ok := p.Acquire()
+		if !ok || e != e1 {
+			t.Fatalf("Failed to acquire at step %d", i)
+		}
+		if int(e.ActiveRequests) != i {
+			t.Errorf("Expected %d active requests, got %d", i, e.ActiveRequests)
+		}
+		
+		// Pool should only be empty at the 11th call
+		if i < 10 {
+			// Check if it's still in the channel
+			select {
+			case entryInChan := <-p.Idle:
+				if entryInChan != e1 {
+					t.Errorf("Expected e1 in channel")
+				}
+				// Verify inPool flag - it should be 1 because Acquire put it back
+				if entryInChan.InPool != 1 {
+					t.Errorf("Expected InPool 1 because Acquire should have put it back")
+				}
+				// Put it back manually since we just popped it for verification
+				p.Idle <- entryInChan
+			default:
+				t.Errorf("Expected entry to still be in channel at step %d", i)
+			}
+		}
 	}
+
+	// 11th call should fail
+	_, ok := p.Acquire()
+	if ok {
+		t.Errorf("Expected pool to be empty at 11th call")
+	}
+
+	// Release one
+	p.Release(e1)
+	if e1.ActiveRequests != 9 {
+		t.Errorf("Expected 9 active requests, got %d", e1.ActiveRequests)
+	}
+
+	// Should be able to acquire again
+	e, ok := p.Acquire()
+	if !ok || e != e1 {
+		t.Errorf("Expected to acquire again after release")
+	}
+}
+
+func TestContainerPool_ConcurrentAccess(t *testing.T) {
+    p := &ContainerPool{
+        Idle:           make(chan *Entry, 1),
+        MaxConcurrency: 100,
+    }
+
+    e1 := &Entry{ContainerID: "c1", SocketPath: "s1", ActiveRequests: 0, InPool: 1}
+    p.Idle <- e1
+
+    var wg sync.WaitGroup
+    for i := 0; i < 100; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            e, ok := p.Acquire()
+            if ok && e != nil {
+                // simulate work
+                p.Release(e)
+            }
+        }()
+    }
+    wg.Wait()
+
+    if e1.ActiveRequests != 0 {
+        t.Errorf("Expected 0 active requests after all finished, got %d", e1.ActiveRequests)
+    }
+    if e1.InPool != 1 {
+        t.Errorf("Expected InPool 1 after all released")
+    }
 }
