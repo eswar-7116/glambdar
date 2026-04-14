@@ -64,6 +64,7 @@ func TestInvoke_HappyPath(t *testing.T) {
 	}
 
 	req := functions.InvokeRequest{
+		Method: "POST",
 		Headers: map[string]string{
 			"Content-Type": "application/json",
 		},
@@ -93,5 +94,52 @@ func TestInvoke_HappyPath(t *testing.T) {
 
 	if _, ok := body["json"]; !ok {
 		t.Fatalf("expected json field in response body")
+	}
+
+	if body["method"] != "POST" {
+		t.Errorf("expected default method POST, got %s", body["method"])
+	}
+}
+
+func TestInvoke_Methods(t *testing.T) {
+	cleanup := setupInvokeEnv(t)
+	defer cleanup()
+
+	funcName := "methods-func"
+	if err := functions.Deploy(validZipFile, funcName, 0); err != nil {
+		t.Fatalf("deploy failed: %v", err)
+	}
+
+	d := &docker.Docker{
+		WorkerPath: config.WorkerPath,
+	}
+	defer d.Close()
+	ctx := t.Context()
+	defer config.PoolManager.DeleteAllContainers(ctx, d)
+
+	methods := []string{"GET", "POST", "PUT", "PATCH", "DELETE"}
+	for _, method := range methods {
+		t.Run(method, func(t *testing.T) {
+			req := functions.InvokeRequest{
+				Method: method,
+			}
+			res, err := functions.Invoke(ctx, d, funcName, req)
+			if err != nil {
+				t.Fatalf("invoke failed for %s: %v", method, err)
+			}
+
+			if res.StatusCode != 200 {
+				t.Fatalf("expected status 200, got %d", res.StatusCode)
+			}
+
+			var body map[string]any
+			if err := json.Unmarshal(res.Body, &body); err != nil {
+				t.Fatalf("invalid response body: %v", err)
+			}
+
+			if body["method"] != method {
+				t.Errorf("expected method %s, got %s", method, body["method"])
+			}
+		})
 	}
 }

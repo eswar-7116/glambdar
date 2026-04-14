@@ -49,8 +49,24 @@ func parseRateLimit(rateLimit int) (rate.Limit, int) {
 	return rate.Limit(rateLimit), burst
 }
 
-func (pm *PoolManager) Delete(funcName string) {
-	pm.pools.Delete(funcName)
+func (pm *PoolManager) DeletePool(ctx context.Context, d *docker.Docker, funcName string) {
+	if val, ok := pm.pools.Load(funcName); ok {
+		p := val.(*ContainerPool)
+		// Drain the pool and remove containers
+		for {
+			select {
+			case e := <-p.Idle:
+				err := d.ContainerRemove(ctx, e.ContainerID)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to delete container (%s) on pool deletion: %s\n", e.ContainerID[:12], err)
+				}
+				os.RemoveAll(e.SocketPath)
+			default:
+				pm.pools.Delete(funcName)
+				return
+			}
+		}
+	}
 }
 
 func (pm *PoolManager) DeleteAllContainers(ctx context.Context, d *docker.Docker) {

@@ -21,6 +21,7 @@ import (
 var ErrRateLimited = errors.New("rate limit exceeded")
 
 type InvokeRequest struct {
+	Method  string            `json:"method"`
 	Headers map[string]string `json:"headers"`
 	Body    string            `json:"body"`
 }
