@@ -49,8 +49,8 @@ func TestDeleteHandler(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNoContent {
-		t.Errorf("expected status 204, got %d", w.Code)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
 	}
 
 	if _, err := os.Stat(funcDir); !os.IsNotExist(err) {

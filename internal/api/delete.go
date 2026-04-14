@@ -50,7 +50,7 @@ func deleteFuncHandler(c *gin.Context) {
 		// We don't return here because files and metadata are already gone
 	}
 
-	c.JSON(http.StatusNoContent, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"deleted": name,
 	})
 }
