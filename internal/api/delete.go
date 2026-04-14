@@ -50,6 +50,9 @@ func deleteFuncHandler(c *gin.Context) {
 		// We don't return here because files and metadata are already gone
 	}
 
+	// Clean up container pool
+	config.PoolManager.DeletePool(c, config.DockerClient, name)
+
 	c.JSON(http.StatusOK, gin.H{
 		"deleted": name,
 	})

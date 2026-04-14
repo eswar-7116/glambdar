@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"context"
 	"testing"
 	"golang.org/x/time/rate"
 )
@@ -26,7 +27,7 @@ func TestPoolManager_GetOrCreate(t *testing.T) {
 	}
 
 	// Test Delete
-	pm.Delete("func-1")
+	pm.DeletePool(context.Background(), nil, "func-1")
 
 	// Should create a new one now since the old was deleted
 	p4 := pm.GetOrCreate("func-1", 0, 1)
