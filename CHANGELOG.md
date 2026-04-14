@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.2.1] - 2026-04-14
+
+### Features
+
+- **Multi-Method Support**: Functions now support `GET`, `POST`, `PUT`, `PATCH`, and `DELETE` methods for invocations. The request method is passed to the function handler via `req.method`.
+- **Automatic Pool Cleanup**: Warm container pools are now immediately drained and containers are stopped when a function is deleted.
+
+### Bug Fixes & Improvements
+
+- **Resource Management**: Fixed a temporary file leak in the deployment process where zip files were not cleaned up from `/tmp`.
+- **Handler Robustness**: Improved the standard test function to handle null headers and gracefully echo request metadata.
+- **CI/CD**: Added integration test steps to the GitHub Actions workflow to ensure multi-method and pool management stability.
+- **API Reliability**: Corrected response status handling and updated internal versioning variables.
+
+---
+
 ## [v2.2.0] - 2026-04-13
 
 ### Features
