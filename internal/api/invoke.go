@@ -15,7 +15,9 @@ import (
 )
 
 func registerInvokeRoutes(router *gin.Engine) {
-	router.POST("/invoke/:name", invokeHandler)
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+		router.Handle(method, "/invoke/:name", invokeHandler)
+	}
 }
 
 func invokeHandler(c *gin.Context) {
@@ -45,17 +47,22 @@ func invokeHandler(c *gin.Context) {
 	}
 
 	// Read request body
-	bodyBytes, err := c.GetRawData()
-	if err != nil {
-		log.Println("ERROR: " + err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to read request",
-		})
-		return
+	var bodyBytes []byte
+	if c.Request.Body != nil {
+		var err error
+		bodyBytes, err = c.GetRawData()
+		if err != nil {
+			log.Println("ERROR: " + err.Error())
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Failed to read request",
+			})
+			return
+		}
 	}
 
 	// Build request object
 	req := functions.InvokeRequest{
+		Method:  c.Request.Method,
 		Headers: headers,
 		Body:    string(bodyBytes),
 	}
