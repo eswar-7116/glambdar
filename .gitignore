@@ -39,3 +39,6 @@ go.work.sum
 
 # TODO
 TODO.md
+
+# Test function for benchmarking
+benchmarks/function.zip

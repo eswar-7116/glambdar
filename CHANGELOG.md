@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - **Multi-Method Support**: Functions now support `GET`, `POST`, `PUT`, `PATCH`, and `DELETE` methods for invocations. The request method is passed to the function handler via `req.method`.
 - **Automatic Pool Cleanup**: Warm container pools are now immediately drained and containers are stopped when a function is deleted.
+- **Add Benchmarking Scripts**: Added benchmarking scripts used to analyze the engine's performance.
 
 ### Bug Fixes & Improvements
 
