@@ -28,7 +28,7 @@ func deployHandler(c *gin.Context) {
 
 	// Create temporary directory if not exists
 	tmpDir := filepath.Join(os.TempDir(), "glambdar")
-	if err = os.Mkdir(tmpDir, 0755); err != nil && !os.IsExist(err) {
+	if err = os.MkdirAll(tmpDir, 0755); err != nil && !os.IsExist(err) {
 		log.Println("ERROR while creating temporary directory: " + err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create temporary directory"})
 		return
@@ -42,6 +42,7 @@ func deployHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
 		return
 	}
+	defer os.Remove(zipFilePath)
 
 	// Check if function already exists
 	funcName := strings.TrimSuffix(zipBaseName, filepath.Ext(zipBaseName))
