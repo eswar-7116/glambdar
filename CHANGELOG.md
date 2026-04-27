@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.3.0] - 2026-04-27
+
+### Features
+
+- **EWMA-Based Predictive Pre-Warming**: Added a traffic-aware container pre-warmer that uses Exponentially Weighted Moving Average (EWMA) with dynamic alpha to predict demand and proactively spin up idle containers, eliminating cold starts under burst loads.
+- **Traffic Prediction Engine**: New `internal/ewma` package with a `TrafficPredictor` that dynamically adjusts its smoothing factor based on traffic deviation for responsive scaling.
+- **Per-Pool Invoke Tracking**: Each container pool now tracks invocation counts via an atomic counter, feeding the EWMA predictor every 30 seconds.
+
+### Refactoring & Improvements
+
+- **Benchmarking Suite Rewrite**: Replaced the monolithic `benchmark_cli.go` with a modular benchmarking suite (`benchmark.go`, `client.go`, `main.go`, `types.go`) for clearer separation of concerns.
+- **Shared Socket Utility**: Extracted `waitForSocket` into a standalone `internal/sockutil` package to allow reuse by both the invoke path and the pre-warmer without import cycles.
+- **`GetOrCreate` Error Handling**: `PoolManager.GetOrCreate` now returns an error, enabling graceful handling of predictor initialization failures.
+
+### Performance
+
+- **Cold Start Latency**: Reduced to **~230 ms** (from ~340 ms, **32% faster**).
+- **Warm Start Latency**: Improved to **~1.06 ms** (from ~1.3 ms, **18% faster**).
+- **Warm Throughput**: Increased to **~2,951 req/s** (from ~1,900 req/s, **55% higher**).
+- **Burst Cold Starts**: Reduced to **zero** across consecutive burst rounds thanks to predictive pre-warming.
+
+---
+
 ## [v2.2.1] - 2026-04-14
 
 ### Features

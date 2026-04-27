@@ -269,13 +269,13 @@ RUN_INTEGRATION_TESTS=1 go test ./...
 
 ## Performance Benchmarks
 
-Glambdar is optimized for low-latency function execution using persistent per-function container pools and Unix Domain Socket (UDS) IPC.
+Glambdar is optimized for low-latency function execution using persistent per-function container pools, Unix Domain Socket (UDS) IPC, and EWMA-based predictive pre-warming.
 
 | Metric                       | Result           |
 | ---------------------------- | ---------------- |
-| **Cold Start Latency**       | **~340 ms**      |
-| **Warm Start Latency (Avg)** | **~1.3 ms**      |
-| **Warm Throughput**          | **~1,900 req/s** |
+| **Cold Start Latency**       | **~230 ms**      |
+| **Warm Start Latency (Avg)** | **~1.06 ms**     |
+| **Warm Throughput**          | **~2,951 req/s** |
 
 **Benchmark Environment**
 
@@ -291,6 +291,7 @@ Glambdar is optimized for low-latency function execution using persistent per-fu
 
 - **Persistent Docker container pool** for reduced latency and auto-scaling
 - **Intra-Function Concurrency:** Implemented a multi-request routing threshold (adapted from 2024 IEEE serverless optimization models) to drastically reduce cold starts under burst loads while maintaining strict process isolation.
+- **EWMA-Based Predictive Pre-Warming:** Uses Exponentially Weighted Moving Average traffic prediction with dynamic alpha to proactively spin up containers before demand spikes, eliminating cold starts under burst loads.
 - **UDS over TCP** for low-latency IPC
 - Simple IPC protocol (structured JSON)
 
