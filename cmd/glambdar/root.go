@@ -15,7 +15,7 @@ import (
 	"github.com/eswar-7116/glambdar/internal/functions"
 )
 
-var VERSION = "v2.2.1"
+var VERSION = "v2.3.0"
 
 const PORT = "8000"
 
@@ -58,6 +58,9 @@ func Start() {
 	// Context for eviction goroutine
 	evictCtx, evictCancel := context.WithCancel(context.Background())
 	defer evictCancel()
+
+	// Start predictive prewarmer
+	config.PoolManager.StartPrewarmer(evictCtx, config.DockerClient, config.FunctionsDir, 30*time.Second)
 
 	// Start CRON job to clean stale containers
 	cronTicker := time.NewTicker(30 * time.Second)

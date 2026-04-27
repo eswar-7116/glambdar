@@ -62,7 +62,7 @@ func TestInvokeHandler_RateLimited(t *testing.T) {
 	})
 
 	// Mock a rate-limited pool
-	p := config.PoolManager.GetOrCreate(funcName, 1, 1)
+	p, _ := config.PoolManager.GetOrCreate(funcName, 1, 1)
 	p.Limiter = rate.NewLimiter(rate.Limit(0), 0) // Never allow
 
 	router := Router()

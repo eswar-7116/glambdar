@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/eswar-7116/glambdar/internal/ewma"
 	"golang.org/x/time/rate"
 )
 
@@ -16,9 +17,11 @@ type Entry struct {
 }
 
 type ContainerPool struct {
-	Idle           chan *Entry
-	Limiter        *rate.Limiter
-	MaxConcurrency int32
+	Idle             chan *Entry
+	Limiter          *rate.Limiter
+	MaxConcurrency   int32
+	InvokeCount      atomic.Int64
+	TrafficPredictor *ewma.TrafficPredictor
 }
 
 func (p *ContainerPool) Acquire() (entry *Entry, warm bool) {
