@@ -20,7 +20,7 @@ function.zip: function/index.js
 
 # Run lifecycle benchmark
 bench-latency: function.zip
-	go run ./benchmark_cli.go -rateLimit 0
+	go run . -rateLimit 0
 
 # Run throughput test (Requires ab)
 bench-throughput: function.zip
