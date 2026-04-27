@@ -15,6 +15,7 @@ import (
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/docker"
 	"github.com/eswar-7116/glambdar/internal/pool"
+	"github.com/eswar-7116/glambdar/internal/sockutil"
 	"github.com/moby/moby/api/pkg/stdcopy"
 )
 
@@ -55,11 +56,15 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 	}
 
 	// Acquire a warm container or create a new one
-	p := config.PoolManager.GetOrCreate(funcName, md.RateLimit, md.MaxConcurrency)
+	p, err := config.PoolManager.GetOrCreate(funcName, md.RateLimit, md.MaxConcurrency)
+	if err != nil {
+		return InvokeResponse{}, fmt.Errorf("failed to get pool: %w", err)
+	}
 	if !p.Limiter.Allow() {
 		return InvokeResponse{}, ErrRateLimited
 	}
 
+	p.InvokeCount.Add(1)
 	e, warm := p.Acquire()
 	if !warm {
 		// Generate a per-container socket directory on the host
@@ -83,7 +88,7 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 
 		// Wait for the worker's UDS server to become ready
 		workerSock := filepath.Join(socketDir, "glambdar.sock")
-		if err := waitForSocket(workerSock, 5*time.Second); err != nil {
+		if err := sockutil.WaitForSocket(workerSock, 5*time.Second); err != nil {
 			d.ContainerKill(ctx, containerID)
 			os.RemoveAll(socketDir)
 			return InvokeResponse{}, fmt.Errorf("worker socket not ready: %w", err)
@@ -154,16 +159,4 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 	return res, nil
 }
 
-// waitForSocket polls until the unix socket at path is dial-able or timeout expires.
-func waitForSocket(path string, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("unix", path, 200*time.Millisecond)
-		if err == nil {
-			conn.Close()
-			return nil
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	return fmt.Errorf("timeout after %s waiting for %s", timeout, path)
-}
+
