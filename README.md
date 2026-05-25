@@ -4,7 +4,7 @@
 
 # Glambdar
 
-Glambdar is a minimal serverless function runtime written in Go for executing Node.js functions with Docker-based isolation.
+Glambdar is a minimal serverless function runtime written in Go for executing Bun functions with Docker-based isolation.
 
 It is simple and focuses on the core mechanics of a serverless runtime: deployment, invocation, isolation and IPC.
 

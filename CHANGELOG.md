@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v3.0.0] - 2026-05-25
+
+### Features
+
+- **Bun Runtime Migration**: Migrated the worker script from Node.js to Bun to optimize warm-start execution paths.
+- **Native UDS Server**: Replaced Node.js `net.createServer` with Bun's native `Bun.listen`, bypassing stream abstraction overhead.
+- **ESM Native Resolving**: Replaced synchronous Node.js `require()` with dynamic `await import()`, natively resolving CJS and ESM code.
+- **Graceful Shutdown**: Utilizes `server.stop(true)` to gracefully drain and close active socket connections.
+- **Updated Base Image**: Migrated default container runtime image from `node:25-slim` to `oven/bun:slim`.
+
+### Performance
+
+- **Warm Start Latency**: Improved to **~0.99 ms** (from ~1.06 ms, **7% faster**).
+- **Warm Throughput**: Increased to **~2,449 req/s** (from ~2,248 req/s under identical test conditions).
+
+---
+
 ## [v2.3.0] - 2026-04-27
 
 ### Features
