@@ -95,10 +95,10 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 		}
 
 		e = &pool.Entry{
-			ContainerID:    containerID,
-			SocketPath:     socketDir,
-			ActiveRequests: 1, // this current request
+			ContainerID: containerID,
+			SocketPath:  socketDir,
 		}
+		e.ActiveRequests.Store(1) // this current request
 	}
 
 	// Release container back to pool (or kill if pool is full) on return

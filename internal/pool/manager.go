@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/eswar-7116/glambdar/internal/docker"
@@ -201,7 +200,7 @@ func spawnIdle(ctx context.Context, d *docker.Docker, functionsDir, funcName str
 
 	select {
 	case p.Idle <- entry:
-		atomic.StoreInt32(&entry.InPool, 1)
+		entry.InPool.Store(1)
 	default:
 		d.ContainerKill(ctx, containerID)
 		os.RemoveAll(socketDir)

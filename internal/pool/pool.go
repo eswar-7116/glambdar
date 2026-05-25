@@ -12,8 +12,8 @@ type Entry struct {
 	ContainerID    string
 	SocketPath     string
 	LastUsed       time.Time
-	ActiveRequests int32
-	InPool         int32 // atomic bool: 1 if in Idle channel, 0 otherwise
+	ActiveRequests atomic.Int32
+	InPool         atomic.Int32 // atomic bool: 1 if in Idle channel, 0 otherwise
 }
 
 type ContainerPool struct {
@@ -25,21 +25,22 @@ type ContainerPool struct {
 }
 
 func (p *ContainerPool) Acquire() (entry *Entry, warm bool) {
-	if p.MaxConcurrency <= 0 {
-		p.MaxConcurrency = 10
+	limit := p.MaxConcurrency
+	if limit <= 0 {
+		limit = 10
 	}
 
 	select {
 	case e := <-p.Idle:
-		atomic.StoreInt32(&e.InPool, 0)
-		active := atomic.AddInt32(&e.ActiveRequests, 1)
-		if active < p.MaxConcurrency {
+		e.InPool.Store(0)
+		active := e.ActiveRequests.Add(1)
+		if active < limit {
 			// Still has capacity, try to put back in pool
-			if atomic.CompareAndSwapInt32(&e.InPool, 0, 1) {
+			if e.InPool.CompareAndSwap(0, 1) {
 				select {
 				case p.Idle <- e:
 				default:
-					atomic.StoreInt32(&e.InPool, 0)
+					e.InPool.Store(0)
 				}
 			}
 		}
@@ -53,17 +54,22 @@ func (p *ContainerPool) Release(e *Entry) bool {
 	if e == nil {
 		return false
 	}
-	newActive := atomic.AddInt32(&e.ActiveRequests, -1)
+	newActive := e.ActiveRequests.Add(-1)
 	e.LastUsed = time.Now()
 
-	if newActive < p.MaxConcurrency {
+	limit := p.MaxConcurrency
+	if limit <= 0 {
+		limit = 10
+	}
+
+	if newActive < limit {
 		// Try to put back in pool if not already there
-		if atomic.CompareAndSwapInt32(&e.InPool, 0, 1) {
+		if e.InPool.CompareAndSwap(0, 1) {
 			select {
 			case p.Idle <- e:
 				return true
 			default:
-				atomic.StoreInt32(&e.InPool, 0)
+				e.InPool.Store(0)
 				return false // Pool full, caller should kill
 			}
 		}

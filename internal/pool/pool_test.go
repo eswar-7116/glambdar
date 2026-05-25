@@ -18,7 +18,8 @@ func TestContainerPool_AcquireRelease_SingleConcurrency(t *testing.T) {
 	}
 
 	// Create entry and add to pool
-	e1 := &Entry{ContainerID: "c1", SocketPath: "s1", ActiveRequests: 0, InPool: 1}
+	e1 := &Entry{ContainerID: "c1", SocketPath: "s1"}
+	e1.InPool.Store(1)
 	p.Idle <- e1
 
 	// Acquire
@@ -26,8 +27,8 @@ func TestContainerPool_AcquireRelease_SingleConcurrency(t *testing.T) {
 	if !ok || e != e1 {
 		t.Errorf("Expected to acquire e1, got ok=%v", ok)
 	}
-	if e.ActiveRequests != 1 {
-		t.Errorf("Expected 1 active request, got %d", e.ActiveRequests)
+	if e.ActiveRequests.Load() != 1 {
+		t.Errorf("Expected 1 active request, got %d", e.ActiveRequests.Load())
 	}
 
 	// Check if pool is empty now (MaxConcurrency is 1)
@@ -38,8 +39,8 @@ func TestContainerPool_AcquireRelease_SingleConcurrency(t *testing.T) {
 
     // Release
     p.Release(e)
-    if e.ActiveRequests != 0 {
-        t.Errorf("Expected 0 active requests, got %d", e.ActiveRequests)
+    if e.ActiveRequests.Load() != 0 {
+        t.Errorf("Expected 0 active requests, got %d", e.ActiveRequests.Load())
     }
 
     // Acquire again
@@ -55,7 +56,8 @@ func TestContainerPool_HighConcurrency(t *testing.T) {
 		MaxConcurrency: 10,
 	}
 
-	e1 := &Entry{ContainerID: "c1", SocketPath: "s1", ActiveRequests: 0, InPool: 1}
+	e1 := &Entry{ContainerID: "c1", SocketPath: "s1"}
+	e1.InPool.Store(1)
 	p.Idle <- e1
 
 	// Acquire multiple times
@@ -64,8 +66,8 @@ func TestContainerPool_HighConcurrency(t *testing.T) {
 		if !ok || e != e1 {
 			t.Fatalf("Failed to acquire at step %d", i)
 		}
-		if int(e.ActiveRequests) != i {
-			t.Errorf("Expected %d active requests, got %d", i, e.ActiveRequests)
+		if int(e.ActiveRequests.Load()) != i {
+			t.Errorf("Expected %d active requests, got %d", i, e.ActiveRequests.Load())
 		}
 		
 		// Pool should only be empty at the 11th call
@@ -76,8 +78,8 @@ func TestContainerPool_HighConcurrency(t *testing.T) {
 				if entryInChan != e1 {
 					t.Errorf("Expected e1 in channel")
 				}
-				// Verify inPool flag - it should be 1 because Acquire put it back
-				if entryInChan.InPool != 1 {
+				// Verify inPool flag - it should be 1 because Acquire should have put it back
+				if entryInChan.InPool.Load() != 1 {
 					t.Errorf("Expected InPool 1 because Acquire should have put it back")
 				}
 				// Put it back manually since we just popped it for verification
@@ -96,8 +98,8 @@ func TestContainerPool_HighConcurrency(t *testing.T) {
 
 	// Release one
 	p.Release(e1)
-	if e1.ActiveRequests != 9 {
-		t.Errorf("Expected 9 active requests, got %d", e1.ActiveRequests)
+	if e1.ActiveRequests.Load() != 9 {
+		t.Errorf("Expected 9 active requests, got %d", e1.ActiveRequests.Load())
 	}
 
 	// Should be able to acquire again
@@ -113,7 +115,8 @@ func TestContainerPool_ConcurrentAccess(t *testing.T) {
         MaxConcurrency: 100,
     }
 
-    e1 := &Entry{ContainerID: "c1", SocketPath: "s1", ActiveRequests: 0, InPool: 1}
+    e1 := &Entry{ContainerID: "c1", SocketPath: "s1"}
+    e1.InPool.Store(1)
     p.Idle <- e1
 
     var wg sync.WaitGroup
@@ -130,10 +133,10 @@ func TestContainerPool_ConcurrentAccess(t *testing.T) {
     }
     wg.Wait()
 
-    if e1.ActiveRequests != 0 {
-        t.Errorf("Expected 0 active requests after all finished, got %d", e1.ActiveRequests)
+    if e1.ActiveRequests.Load() != 0 {
+        t.Errorf("Expected 0 active requests after all finished, got %d", e1.ActiveRequests.Load())
     }
-    if e1.InPool != 1 {
+    if e1.InPool.Load() != 1 {
         t.Errorf("Expected InPool 1 after all released")
     }
 }
