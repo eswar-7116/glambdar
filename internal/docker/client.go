@@ -72,7 +72,7 @@ func (d *Docker) ContainerCreate(ctx context.Context, funcDir, socketPath string
 		return "", err
 	}
 
-	const image = "node:25-slim"
+	const image = "oven/bun:slim"
 
 	_, err = cli.ImageInspect(ctx, image)
 	if err != nil {
@@ -97,7 +97,7 @@ func (d *Docker) ContainerCreate(ctx context.Context, funcDir, socketPath string
 		Image: image,
 		Config: &container.Config{
 			Hostname: "glambdar",
-			Cmd:      []string{"node", "/glambdar/worker.js", "/function"},
+			Cmd:      []string{"bun", "/glambdar/worker.js", "/function"},
 		},
 		HostConfig: &container.HostConfig{
 			Mounts: []mount.Mount{

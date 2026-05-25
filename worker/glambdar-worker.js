@@ -1,6 +1,5 @@
-const fs = require("fs");
-const path = require("path");
-const net = require("net");
+import { join } from "node:path";
+import { existsSync, unlinkSync, chmodSync } from "node:fs";
 
 const funcDir = process.argv[2];
 const SOCKET_PATH = "/glambdar-sock/glambdar.sock";
@@ -13,14 +12,13 @@ if (!funcDir) {
 // Load the handler once at startup (cold start)
 let handler;
 try {
-    const indexJs = path.join(funcDir, "index.js");
-
-    if (!fs.existsSync(indexJs)) {
+    const indexJs = join(funcDir, "index.js");
+    if (!existsSync(indexJs)) {
         console.error("index.js not found in function directory");
         process.exit(1);
     }
 
-    const mod = require(indexJs);
+    const mod = await import(indexJs);
     if (typeof mod.handler !== "function") {
         console.error("exports.handler must be a function");
         process.exit(1);
@@ -33,64 +31,64 @@ try {
 }
 
 // Clean up stale socket file if it exists
-if (fs.existsSync(SOCKET_PATH)) {
-    fs.unlinkSync(SOCKET_PATH);
+if (existsSync(SOCKET_PATH)) {
+    unlinkSync(SOCKET_PATH);
 }
 
-// Create UDS server with allowHalfOpen enabled so we can respond after receiving EOF
-const server = net.createServer({ allowHalfOpen: true }, (conn) => {
-    let chunks = [];
+// Create UDS server with allowHalfOpen enabled
+const server = Bun.listen({
+    unix: SOCKET_PATH,
+    socket: {
+        data(socket, data) {
+            // Accumulate buffer chunks directly on the socket instance
+            socket._payloadChunks = socket._payloadChunks 
+                ? Buffer.concat([socket._payloadChunks, data]) 
+                : data;
+        },
+        async end(socket) {
+            // Triggered on client EOF. Socket remains open for writing.
+            try {
+                const payload = socket._payloadChunks ? socket._payloadChunks.toString() : "{}";
+                const req = JSON.parse(payload);
 
-    conn.on("data", (data) => {
-        chunks.push(data);
-    });
+                req.json = async () => {
+                    try {
+                        return JSON.parse(req.body || null);
+                    } catch {
+                        throw new Error("invalid JSON body");
+                    }
+                };
 
-    conn.on("end", async () => {
-        try {
-            const req = JSON.parse(Buffer.concat(chunks).toString());
-
-            req.json = async () => {
-                try {
-                    return JSON.parse(req.body || null);
-                } catch {
-                    throw new Error("invalid JSON body");
-                }
-            };
-
-            const res = await handler(req);
-
-            conn.end(JSON.stringify(res));
-        } catch (err) {
-            conn.end(JSON.stringify({
-                statusCode: 500,
-                body: { error: err.message || "function execution failed" }
-            }));
+                const res = await handler(req);
+                socket.write(JSON.stringify(res));
+                socket.end(); // Fully close connection
+                
+            } catch (err) {
+                socket.write(JSON.stringify({
+                    statusCode: 500,
+                    body: { error: err.message || "function execution failed" }
+                }));
+                socket.end();
+            }
+        },
+        error(_, err) {
+            console.error("connection error:", err.message);
         }
-    });
-
-    conn.on("error", (err) => {
-        console.error("connection error:", err.message);
-    });
-});
-
-server.listen(SOCKET_PATH, () => {
-    console.log("glambdar worker listening on", SOCKET_PATH);
-    try {
-        // Ensure host has permissions to connect to the socket
-        fs.chmodSync(SOCKET_PATH, 0o777);
-    } catch (err) {
-        console.error("failed to chmod socket:", err.message);
     }
 });
 
+console.log("glambdar worker listening on", SOCKET_PATH);
+
+try {
+    // Ensure host has permissions to connect to the socket
+    chmodSync(SOCKET_PATH, 0o777);
+} catch (err) {
+    console.error("failed to chmod socket:", err.message);
+}
+
 // Graceful shutdown
 process.on("SIGTERM", () => {
-    server.close(() => {
-        process.exit(0);
-    });
-});
-
-server.on("error", (err) => {
-    console.error("server error:", err.message);
-    process.exit(1);
+    // Drain and close all active connections gracefully
+    server.stop(true); 
+    process.exit(0);
 });

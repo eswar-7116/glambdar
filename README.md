@@ -17,7 +17,7 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 3. On invocation:
    - A warm Docker container is acquired from the pool (or a new one started)
    - The function code is mounted
-   - A Node.js worker executes the function
+   - A Bun worker executes the function
    - Communication between runtime and worker happens via Unix Domain Sockets (UDS)
    - After execution, the container is returned to the pool for reuse
 
@@ -33,7 +33,7 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 - **Unix-based Environment** (Linux/macOS)
   > UDS is used for IPC, so Windows is not supported natively
 - **Go** (for building the runtime)
-- **Node.js** (inside Docker container, managed by the Node.js container image)
+- **Bun** (inside Docker container, managed by the `oven/bun:slim` container image)
 
 ---
 
@@ -274,16 +274,17 @@ Glambdar is optimized for low-latency function execution using persistent per-fu
 | Metric                       | Result           |
 | ---------------------------- | ---------------- |
 | **Cold Start Latency**       | **~230 ms**      |
-| **Warm Start Latency (Avg)** | **~1.06 ms**     |
-| **Warm Throughput**          | **~2,951 req/s** |
+| **Warm Start Latency (Avg)** | **~0.99 ms**     |
+| **Warm Throughput**          | **~2,449 req/s** |
 
 **Benchmark Environment**
 
 - Local Linux environment
 - Intel i7 13th Gen, 16GB RAM
 - Simple "ping" function returning static JSON
+- Bun runtime (`oven/bun:slim`) with native UDS server (`Bun.listen`)
 - Warm latency measured after worker/container initialization
-- Throughput measured under concurrent warm load
+- Throughput measured under concurrent warm load (1,000 requests, 10 concurrent)
 
 ---
 
