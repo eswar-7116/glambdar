@@ -15,7 +15,7 @@ import (
 	"github.com/eswar-7116/glambdar/internal/functions"
 )
 
-var VERSION = "v3.0.0"
+const VERSION = "v3.0.0"
 
 const PORT = "8000"
 
