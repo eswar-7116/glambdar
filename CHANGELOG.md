@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v3.0.1] - 2026-05-29
+
+### Bug Fixes
+
+- **Concurrent Pool Access**: Resolved a data race on `Entry.LastUsed` during concurrent `Release` calls by introducing a mutex lock on `Entry`.
+- **CI/CD Testing**: Added `-race` and `-count=1` flags to both the unit test and integration test workflows to ensure concurrent race conditions are automatically detected in the pipeline.
+
 ## [v3.0.0] - 2026-05-25
 
 ### Features
