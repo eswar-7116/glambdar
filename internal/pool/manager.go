@@ -106,7 +106,10 @@ func (pm *PoolManager) RemoveStaleContainers(ctx context.Context, d *docker.Dock
 		for {
 			select {
 			case e := <-p.Idle:
-				if time.Since(e.LastUsed) > ttl {
+				e.mu.Lock()
+				lastUsed := e.LastUsed
+				e.mu.Unlock()
+				if time.Since(lastUsed) > ttl {
 					err := d.ContainerRemove(ctx, e.ContainerID)
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "Failed to remove stale container (%s): %s\n", e.ContainerID[:12], err)

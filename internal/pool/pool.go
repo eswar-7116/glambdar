@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 type Entry struct {
 	ContainerID    string
 	SocketPath     string
+	mu             sync.Mutex
 	LastUsed       time.Time
 	ActiveRequests atomic.Int32
 	InPool         atomic.Int32 // atomic bool: 1 if in Idle channel, 0 otherwise
@@ -55,7 +57,9 @@ func (p *ContainerPool) Release(e *Entry) bool {
 		return false
 	}
 	newActive := e.ActiveRequests.Add(-1)
+	e.mu.Lock()
 	e.LastUsed = time.Now()
+	e.mu.Unlock()
 
 	limit := p.MaxConcurrency
 	if limit <= 0 {
