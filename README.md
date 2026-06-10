@@ -8,6 +8,8 @@ Glambdar is a minimal serverless function runtime written in Go for executing Bu
 
 It is simple and focuses on the core mechanics of a serverless runtime: deployment, invocation, isolation and IPC.
 
+[![GoDoc](https://godoc.org/github.com/eswar-7116/glambdar?status.svg)](https://godoc.org/github.com/eswar-7116/glambdar)
+
 ---
 
 ## Execution Flow
