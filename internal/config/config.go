@@ -6,6 +6,8 @@ import (
 
 	"github.com/eswar-7116/glambdar/internal/docker"
 	"github.com/eswar-7116/glambdar/internal/pool"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -39,12 +41,31 @@ func InitPathsWithBase(baseDir string) error {
 		return err
 	}
 
-	dbPath := filepath.Join(ConfigDir, "glambdar.db")
-	DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	dbConfig, err := LoadDBConfig()
 	if err != nil {
 		return err
 	}
-	DB.Exec("PRAGMA journal_mode=WAL;")
+
+	var dialector gorm.Dialector
+	switch dbConfig.Type {
+	case DBTypePostgres:
+		dialector = postgres.Open(dbConfig.DSN)
+	case DBTypeMySQL:
+		dialector = mysql.Open(dbConfig.DSN)
+	case DBTypeSQLite:
+		fallthrough
+	default:
+		dialector = sqlite.Open(dbConfig.DSN)
+	}
+
+	DB, err = gorm.Open(dialector, &gorm.Config{})
+	if err != nil {
+		return err
+	}
+
+	if dbConfig.Type == DBTypeSQLite {
+		DB.Exec("PRAGMA journal_mode=WAL;")
+	}
 
 	return nil
 }
