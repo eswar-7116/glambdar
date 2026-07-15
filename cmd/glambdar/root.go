@@ -10,13 +10,36 @@ import (
 	"syscall"
 	"time"
 
+	"runtime/debug"
+
 	"github.com/eswar-7116/glambdar/internal/api"
 	"github.com/eswar-7116/glambdar/internal/auth"
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
 )
 
-const VERSION = "v3.0.1"
+var VERSION = getVersion()
+
+func getVersion() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "unknown"
+	}
+	if info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+
+	for _, s := range info.Settings {
+		if s.Key == "vcs.revision" {
+			rev := s.Value
+			if len(rev) > 7 {
+				rev = rev[:7]
+			}
+			return "dev-" + rev
+		}
+	}
+	return "dev"
+}
 
 const PORT = "8000"
 

@@ -47,6 +47,44 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 
 ---
 
+## Configuration
+
+### Database
+
+By default, Glambdar uses a local SQLite database (`~/.glambdar/glambdar.db`) with WAL mode enabled.
+To use PostgreSQL or MySQL, create a `~/.glambdar/db_config.json` file:
+
+```json
+{
+  "type": "postgres",
+  "dsn": "host=localhost user=gorm password=gorm dbname=gorm port=9920 sslmode=disable TimeZone=UTC"
+}
+```
+
+_(Valid `type` values are `sqlite`, `postgres`, and `mysql`)_
+
+### Authentication & RBAC
+
+All API endpoints (except `/health`) require an API key passed via the `X-API-Key` header.
+On the **very first boot**, Glambdar generates a Root Admin key and prints it to the console:
+
+```text
+Admin API key: glmbd_ak_xxxxxxxxxxxxxxxxxxxx
+Save this key securely. It will NOT be shown again.
+```
+
+_(If lost, reset it using `go run . reset-admin-key`)_
+
+You can use the Root Admin key to generate secondary keys with restricted privileges via the `/auth/keys` endpoint.
+The available roles are:
+
+- `admin`: Full access to everything
+- `deployer`: Can deploy, invoke, delete, and view functions/logs
+- `invoker`: Can invoke functions and view basic info
+- `viewer`: Read-only access to function info and logs
+
+---
+
 ## Quick Start
 
 ### 1. Clone the repository
@@ -77,6 +115,7 @@ The runtime starts an HTTP server on **`localhost:8000`**.
 
 ```bash
 curl -X POST \
+  -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" \
   -F "file=@/path/to/myfunc.zip" \
   http://localhost:8000/deploy
 ```
@@ -87,6 +126,7 @@ curl -X POST \
 
 ```bash
 curl -X POST \
+  -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" \
   -H "Content-Type: application/json" \
   -d '{"name":"Glambdar"}' \
   http://localhost:8000/invoke/myfunc
@@ -95,25 +135,25 @@ curl -X POST \
 ### 5. List deployed functions
 
 ```bash
-curl http://localhost:8000/info
+curl -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" http://localhost:8000/info
 ```
 
 ### 6. Get function details
 
 ```bash
-curl http://localhost:8000/info/myfunc
+curl -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" http://localhost:8000/info/myfunc
 ```
 
 ### 7. Get function logs
 
 ```bash
-curl http://localhost:8000/logs/myfunc
+curl -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" http://localhost:8000/logs/myfunc
 ```
 
 ### 8. Delete a function
 
 ```bash
-curl -X DELETE http://localhost:8000/del/myfunc
+curl -X DELETE -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" http://localhost:8000/del/myfunc
 ```
 
 ---

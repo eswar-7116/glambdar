@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v4.0.0] - 2026-07-15
+
+### Breaking Changes
+
+- **Authentication & RBAC**: All API endpoints (except `/health`) are now protected by an `X-API-Key` header. Requests without a valid key will return `401 Unauthorized`.
+- **Role-Based Access Control**: Keys are now assigned discrete roles (`admin`, `deployer`, `invoker`, `viewer`), strictly limiting endpoint access based on a default-deny policy.
+
+### Features
+
+- **Database Support**: Added support for PostgreSQL and MySQL alongside SQLite. The database connection can be configured via `~/.glambdar/db_config.json`.
+- **Async Audit Logging**: Administrative and key-based actions are now continuously audited to the database asynchronously, maintaining warm-invocation latency goals.
+- **Key Management API**: New keys can be generated, promoted, or revoked dynamically via the `/auth/keys` endpoints without downtime.
+
+---
+
 ## [v3.0.1] - 2026-05-29
 
 ### Bug Fixes
