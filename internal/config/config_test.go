@@ -46,6 +46,10 @@ func TestInitPathsWithBase(t *testing.T) {
 }
 
 func TestInitPaths(t *testing.T) {
+	tempHome, _ := os.MkdirTemp("", "home-*")
+	defer os.RemoveAll(tempHome)
+	t.Setenv("HOME", tempHome)
+
 	// This test calls InitPaths which uses the user's home directory.
 	// We just want to make sure it doesn't return an error.
 	// In a real environment, we might want to mock os.UserHomeDir if possible,

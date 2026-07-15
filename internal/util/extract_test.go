@@ -17,6 +17,11 @@ var (
 	noZipFile      = filepath.Join("..", "..", "test_data", "zip", "none.zip")
 )
 
+func init() {
+	tempHome, _ := os.MkdirTemp("", "home-*")
+	os.Setenv("HOME", tempHome)
+}
+
 func TestExtractZIP_ValidZIP(t *testing.T) {
 	config.InitPaths()
 	extractedDir, err := util.ExtractZIP(validZipFile, "vaild")
@@ -65,5 +70,4 @@ func TestExtractZIP_NoZip(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected error from os.MkdirAll, but got: %v", err)
 	}
-	os.RemoveAll("functions")
 }

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/eswar-7116/glambdar/internal/auth/authtest"
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
 	"github.com/gin-gonic/gin"
@@ -25,11 +26,13 @@ func TestDeployHandler(t *testing.T) {
 
 	config.InitPathsWithBase(tempDir)
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
+	adminKey := authtest.SetupTestAuth(t)
 
 	router := Router()
 
 	// Test case: Missing file
 	req, _ := http.NewRequest("POST", "/deploy", nil)
+	req.Header.Set("X-API-Key", adminKey)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
@@ -54,6 +57,7 @@ func TestDeployHandler(t *testing.T) {
 	writer.Close()
 
 	req, _ = http.NewRequest("POST", "/deploy", body)
+	req.Header.Set("X-API-Key", adminKey)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -73,6 +77,7 @@ func TestDeployHandler(t *testing.T) {
 	writer2.Close()
 
 	req, _ = http.NewRequest("POST", "/deploy", body2)
+	req.Header.Set("X-API-Key", adminKey)
 	req.Header.Set("Content-Type", writer2.FormDataContentType())
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)

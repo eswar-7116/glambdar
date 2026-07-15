@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/eswar-7116/glambdar/internal/api"
+	"github.com/eswar-7116/glambdar/internal/auth"
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
 )
@@ -27,8 +28,13 @@ func Init() {
 		os.Exit(1)
 	}
 
-	if err := config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{}); err != nil {
+	if err := config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{}, &auth.APIKey{}, &auth.AuditLog{}); err != nil {
 		fmt.Println("Failed to migrate database schema:", err)
+		os.Exit(1)
+	}
+
+	if err := auth.BootstrapRootKey(); err != nil {
+		fmt.Println("Failed to bootstrap admin key:", err)
 		os.Exit(1)
 	}
 }

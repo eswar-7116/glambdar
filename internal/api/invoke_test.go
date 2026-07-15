@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/eswar-7116/glambdar/internal/auth/authtest"
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
 	"github.com/gin-gonic/gin"
@@ -26,11 +27,13 @@ func TestInvokeHandler_NotFound(t *testing.T) {
 
 	config.InitPathsWithBase(tempDir)
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
+	adminKey := authtest.SetupTestAuth(t)
 
 	router := Router()
 
 	// Test case: Function not found
 	req, _ := http.NewRequest("POST", "/invoke/missing", nil)
+	req.Header.Set("X-API-Key", adminKey)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -50,6 +53,7 @@ func TestInvokeHandler_RateLimited(t *testing.T) {
 
 	config.InitPathsWithBase(tempDir)
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
+	adminKey := authtest.SetupTestAuth(t)
 
 	// Create function directory so it passes the existence check
 	funcName := "limited-func"
@@ -68,6 +72,7 @@ func TestInvokeHandler_RateLimited(t *testing.T) {
 	router := Router()
 
 	req, _ := http.NewRequest("POST", "/invoke/"+funcName, strings.NewReader(`{}`))
+	req.Header.Set("X-API-Key", adminKey)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

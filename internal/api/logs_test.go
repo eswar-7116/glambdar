@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/eswar-7116/glambdar/internal/auth/authtest"
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
 	"github.com/gin-gonic/gin"
@@ -23,10 +24,11 @@ func TestLogsHandler(t *testing.T) {
 
 	config.InitPathsWithBase(tempDir)
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
+	adminKey := authtest.SetupTestAuth(t)
 
 	funcName := "logtest"
 	functions.SaveMetadata(&functions.Metadata{Name: funcName})
-	
+
 	// Insert mocks
 	functions.SaveLog(&functions.Log{FuncName: funcName, Stdout: "out1", Stderr: "err1"})
 	functions.SaveLog(&functions.Log{FuncName: funcName, Stdout: "out2", Stderr: "err2"})
@@ -35,6 +37,7 @@ func TestLogsHandler(t *testing.T) {
 
 	// Test case: Success
 	req, _ := http.NewRequest("GET", "/logs/"+funcName, nil)
+	req.Header.Set("X-API-Key", adminKey)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -50,6 +53,7 @@ func TestLogsHandler(t *testing.T) {
 
 	// Test case: Not found
 	req, _ = http.NewRequest("GET", "/logs/missing", nil)
+	req.Header.Set("X-API-Key", adminKey)
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

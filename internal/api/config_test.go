@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/eswar-7116/glambdar/internal/auth/authtest"
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,7 @@ func TestConfigHandler_UpdateRateLimit(t *testing.T) {
 
 	config.InitPathsWithBase(tempDir)
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
+	adminKey := authtest.SetupTestAuth(t)
 
 	funcName := "config-func"
 	os.MkdirAll(filepath.Join(config.FunctionsDir, funcName), 0755)
@@ -40,6 +42,7 @@ func TestConfigHandler_UpdateRateLimit(t *testing.T) {
 	// Update rate limit to 5
 	reqBody, _ := json.Marshal(map[string]int{"rateLimit": 5})
 	req, _ := http.NewRequest("POST", "/config/"+funcName, bytes.NewBuffer(reqBody))
+	req.Header.Set("X-API-Key", adminKey)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -56,6 +59,7 @@ func TestConfigHandler_UpdateRateLimit(t *testing.T) {
 
 	// Test case: Non-existent function
 	req, _ = http.NewRequest("POST", "/config/missing-func", bytes.NewBuffer(reqBody))
+	req.Header.Set("X-API-Key", adminKey)
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -65,6 +69,7 @@ func TestConfigHandler_UpdateRateLimit(t *testing.T) {
 
 	// Test case: Invalid JSON
 	req, _ = http.NewRequest("POST", "/config/"+funcName, bytes.NewBufferString("invalid json"))
+	req.Header.Set("X-API-Key", adminKey)
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)

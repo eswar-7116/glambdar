@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/eswar-7116/glambdar/internal/auth/authtest"
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
 	"github.com/gin-gonic/gin"
@@ -24,6 +25,7 @@ func TestInfoHandler(t *testing.T) {
 
 	config.InitPathsWithBase(tempDir)
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
+	adminKey := authtest.SetupTestAuth(t)
 
 	// Create a dummy function directory with metadata
 	funcName := "testfunc"
@@ -39,6 +41,7 @@ func TestInfoHandler(t *testing.T) {
 
 	// Test case: /info (list all)
 	req, _ := http.NewRequest("GET", "/info", nil)
+	req.Header.Set("X-API-Key", adminKey)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -54,6 +57,7 @@ func TestInfoHandler(t *testing.T) {
 
 	// Test case: /info/:name (get specific)
 	req, _ = http.NewRequest("GET", "/info/"+funcName, nil)
+	req.Header.Set("X-API-Key", adminKey)
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -69,6 +73,7 @@ func TestInfoHandler(t *testing.T) {
 
 	// Test case: /info/:name (not found)
 	req, _ = http.NewRequest("GET", "/info/missing", nil)
+	req.Header.Set("X-API-Key", adminKey)
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

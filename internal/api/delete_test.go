@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/eswar-7116/glambdar/internal/auth/authtest"
 	"github.com/eswar-7116/glambdar/internal/config"
 	"github.com/eswar-7116/glambdar/internal/functions"
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,7 @@ func TestDeleteHandler(t *testing.T) {
 
 	config.InitPathsWithBase(tempDir)
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
+	adminKey := authtest.SetupTestAuth(t)
 
 	// Create a dummy function directory and metadata
 	funcName := "testfunc"
@@ -46,6 +48,7 @@ func TestDeleteHandler(t *testing.T) {
 
 	// Test case: Delete existing function
 	req, _ := http.NewRequest("DELETE", "/del/"+funcName, nil)
+	req.Header.Set("X-API-Key", adminKey)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -65,6 +68,7 @@ func TestDeleteHandler(t *testing.T) {
 
 	// Test case: Delete non-existing function
 	req, _ = http.NewRequest("DELETE", "/del/"+funcName, nil)
+	req.Header.Set("X-API-Key", adminKey)
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
