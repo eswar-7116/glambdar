@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/eswar-7116/glambdar/internal/config"
-	"github.com/eswar-7116/glambdar/internal/docker"
-	"github.com/eswar-7116/glambdar/internal/functions"
+	"github.com/eswar-7116/glambdar/v3/internal/config"
+	"github.com/eswar-7116/glambdar/v3/internal/docker"
+	"github.com/eswar-7116/glambdar/v3/internal/functions"
 	"gorm.io/gorm/logger"
 )
 

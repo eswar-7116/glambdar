@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/eswar-7116/glambdar/internal/auth"
+	"github.com/eswar-7116/glambdar/v3/internal/auth"
 	"github.com/gin-gonic/gin"
 )
 

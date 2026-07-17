@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/eswar-7116/glambdar/internal/config"
-	"github.com/eswar-7116/glambdar/internal/functions"
+	"github.com/eswar-7116/glambdar/v3/internal/config"
+	"github.com/eswar-7116/glambdar/v3/internal/functions"
 	"github.com/gin-gonic/gin"
 )
 

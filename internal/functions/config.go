@@ -1,7 +1,7 @@
 package functions
 
 import (
-	"github.com/eswar-7116/glambdar/internal/config"
+	"github.com/eswar-7116/glambdar/v3/internal/config"
 )
 
 func UpdateRateLimit(funcName string, limit int) error {

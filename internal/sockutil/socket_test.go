@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eswar-7116/glambdar/internal/sockutil"
+	"github.com/eswar-7116/glambdar/v3/internal/sockutil"
 )
 
 func TestWaitForSocket_Success(t *testing.T) {

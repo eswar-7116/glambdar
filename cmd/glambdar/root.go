@@ -12,10 +12,10 @@ import (
 
 	"runtime/debug"
 
-	"github.com/eswar-7116/glambdar/internal/api"
-	"github.com/eswar-7116/glambdar/internal/auth"
-	"github.com/eswar-7116/glambdar/internal/config"
-	"github.com/eswar-7116/glambdar/internal/functions"
+	"github.com/eswar-7116/glambdar/v3/internal/api"
+	"github.com/eswar-7116/glambdar/v3/internal/auth"
+	"github.com/eswar-7116/glambdar/v3/internal/config"
+	"github.com/eswar-7116/glambdar/v3/internal/functions"
 )
 
 var VERSION = getVersion()

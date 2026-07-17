@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/eswar-7116/glambdar/internal/util"
+	"github.com/eswar-7116/glambdar/v3/internal/util"
 	"gorm.io/gorm"
 )
 

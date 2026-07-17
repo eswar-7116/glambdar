@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/eswar-7116/glambdar/internal/ewma"
+	"github.com/eswar-7116/glambdar/v3/internal/ewma"
 	"golang.org/x/time/rate"
 )
 

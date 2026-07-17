@@ -12,10 +12,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/eswar-7116/glambdar/internal/config"
-	"github.com/eswar-7116/glambdar/internal/docker"
-	"github.com/eswar-7116/glambdar/internal/pool"
-	"github.com/eswar-7116/glambdar/internal/sockutil"
+	"github.com/eswar-7116/glambdar/v3/internal/config"
+	"github.com/eswar-7116/glambdar/v3/internal/docker"
+	"github.com/eswar-7116/glambdar/v3/internal/pool"
+	"github.com/eswar-7116/glambdar/v3/internal/sockutil"
 	"github.com/moby/moby/api/pkg/stdcopy"
 )
 

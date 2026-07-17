@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/eswar-7116/glambdar/internal/docker"
-	"github.com/eswar-7116/glambdar/internal/ewma"
-	"github.com/eswar-7116/glambdar/internal/sockutil"
+	"github.com/eswar-7116/glambdar/v3/internal/docker"
+	"github.com/eswar-7116/glambdar/v3/internal/ewma"
+	"github.com/eswar-7116/glambdar/v3/internal/sockutil"
 	"golang.org/x/time/rate"
 )
 

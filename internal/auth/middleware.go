@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/eswar-7116/glambdar/internal/config"
+	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 )

@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/eswar-7116/glambdar/cmd/glambdar"
-	"github.com/eswar-7116/glambdar/internal/auth"
+	"github.com/eswar-7116/glambdar/v3/cmd/glambdar"
+	"github.com/eswar-7116/glambdar/v3/internal/auth"
 )
 
 //go:embed worker/glambdar-worker.js

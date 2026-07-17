@@ -2,8 +2,8 @@ package authtest
 
 import (
 	"testing"
-	"github.com/eswar-7116/glambdar/internal/auth"
-	"github.com/eswar-7116/glambdar/internal/config"
+	"github.com/eswar-7116/glambdar/v3/internal/auth"
+	"github.com/eswar-7116/glambdar/v3/internal/config"
 )
 
 func SetupTestAuth(t *testing.T) string {

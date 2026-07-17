@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/eswar-7116/glambdar/internal/functions"
+	"github.com/eswar-7116/glambdar/v3/internal/functions"
 	"github.com/gin-gonic/gin"
 )
 

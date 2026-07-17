@@ -1,4 +1,4 @@
-module github.com/eswar-7116/glambdar
+module github.com/eswar-7116/glambdar/v3
 
 go 1.25.5
 

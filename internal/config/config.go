@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/eswar-7116/glambdar/internal/docker"
-	"github.com/eswar-7116/glambdar/internal/pool"
+	"github.com/eswar-7116/glambdar/v3/internal/docker"
+	"github.com/eswar-7116/glambdar/v3/internal/pool"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"

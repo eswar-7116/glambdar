@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/eswar-7116/glambdar/internal/config"
+	"github.com/eswar-7116/glambdar/v3/internal/config"
 )
 
 func ExtractZIP(zipFilePath string, funcName string) (string, error) {

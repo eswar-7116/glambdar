@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eswar-7116/glambdar/internal/config"
-	"github.com/eswar-7116/glambdar/internal/util"
+	"github.com/eswar-7116/glambdar/v3/internal/config"
+	"github.com/eswar-7116/glambdar/v3/internal/util"
 )
 
 var (
