@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 
 ### Features
 
-- **Database Support**: Added support for PostgreSQL and MySQL alongside SQLite. The database connection can be configured via `~/.glambdar/db_config.json`.
+- **Database Support**: Added support for PostgreSQL and MySQL alongside SQLite. The database connection can be configured via `~/.glambdar/config.json`.
 - **Async Audit Logging**: Administrative and key-based actions are now continuously audited to the database asynchronously, maintaining warm-invocation latency goals.
 - **Key Management API**: New keys can be generated, promoted, or revoked dynamically via the `/auth/keys` endpoints without downtime.
 - **Bun Runtime Migration**: Migrated the worker script from Node.js to Bun to optimize warm-start execution paths.

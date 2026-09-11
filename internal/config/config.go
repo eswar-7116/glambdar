@@ -1,71 +1,89 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
-
-	"github.com/eswar-7116/glambdar/v3/internal/docker"
-	"github.com/eswar-7116/glambdar/v3/internal/pool"
-	"gorm.io/driver/mysql"
-	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-var (
-	ConfigDir    string
-	FunctionsDir string
-	WorkerPath   string
-	DockerClient = &docker.Docker{}
-	PoolManager  = &pool.PoolManager{}
-	DB           *gorm.DB
+type DBType int
+
+const (
+	DBTypeSQLite DBType = iota
+	DBTypePostgres
+	DBTypeMySQL
 )
 
-func InitPaths() error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	return InitPathsWithBase(filepath.Join(home, ".glambdar"))
-}
-
-func InitPathsWithBase(baseDir string) error {
-	ConfigDir = baseDir
-	FunctionsDir = filepath.Join(ConfigDir, "functions")
-	WorkerPath = filepath.Join(ConfigDir, "worker", "glambdar-worker.js")
-
-	DockerClient.WorkerPath = WorkerPath
-
-	err := os.MkdirAll(FunctionsDir, 0755)
-	if err != nil {
-		return err
-	}
-
-	dbConfig, err := LoadDBConfig()
-	if err != nil {
-		return err
-	}
-
-	var dialector gorm.Dialector
-	switch dbConfig.Type {
+func (t DBType) MarshalJSON() ([]byte, error) {
+	switch t {
 	case DBTypePostgres:
-		dialector = postgres.Open(dbConfig.DSN)
+		return json.Marshal("postgres")
 	case DBTypeMySQL:
-		dialector = mysql.Open(dbConfig.DSN)
+		return json.Marshal("mysql")
 	case DBTypeSQLite:
 		fallthrough
 	default:
-		dialector = sqlite.Open(dbConfig.DSN)
+		return json.Marshal("sqlite")
+	}
+}
+
+func (t *DBType) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	switch s {
+	case "postgres":
+		*t = DBTypePostgres
+	case "mysql":
+		*t = DBTypeMySQL
+	case "sqlite":
+		fallthrough
+	default:
+		*t = DBTypeSQLite
+	}
+	return nil
+}
+
+type Config struct {
+	Type DBType `json:"type"` // sqlite, postgres, mysql
+	DSN  string `json:"dsn"`  // Data Source Name
+}
+
+func LoadConfig() (*Config, error) {
+	configPath := filepath.Join(ConfigDir, "config.json")
+
+	file, err := os.Open(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Create default config
+			defaultConfig := &Config{
+				Type: DBTypeSQLite,
+				DSN:  filepath.Join(ConfigDir, "glambdar.db"),
+			}
+			return defaultConfig, SaveConfig(defaultConfig)
+		}
+		return nil, err
+	}
+	defer file.Close()
+
+	var config Config
+	if err := json.NewDecoder(file).Decode(&config); err != nil {
+		return nil, err
 	}
 
-	DB, err = gorm.Open(dialector, &gorm.Config{})
+	return &config, nil
+}
+
+func SaveConfig(config *Config) error {
+	configPath := filepath.Join(ConfigDir, "config.json")
+	file, err := os.Create(configPath)
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
-	if dbConfig.Type == DBTypeSQLite {
-		DB.Exec("PRAGMA journal_mode=WAL;")
-	}
-
-	return nil
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(config)
 }

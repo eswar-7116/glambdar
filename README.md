@@ -52,7 +52,7 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 ### Database
 
 By default, Glambdar uses a local SQLite database (`~/.glambdar/glambdar.db`) with WAL mode enabled.
-To use PostgreSQL or MySQL, create a `~/.glambdar/db_config.json` file:
+To use PostgreSQL or MySQL, create a `~/.glambdar/config.json` file:
 
 ```json
 {
