@@ -73,7 +73,7 @@ Admin API key: glmbd_ak_xxxxxxxxxxxxxxxxxxxx
 Save this key securely. It will NOT be shown again.
 ```
 
-_(If lost, reset it using `go run . reset-admin-key`)_
+_(If lost, reset it using `glambdar reset-admin-key`)_
 
 You can use the Root Admin key to generate secondary keys with restricted privileges via the `/auth/keys` endpoint.
 The available roles are:

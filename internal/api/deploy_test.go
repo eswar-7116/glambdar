@@ -54,6 +54,7 @@ func TestDeployHandler(t *testing.T) {
 		t.Fatalf("failed to create form file: %v", err)
 	}
 	part.Write(zipContent)
+	writer.WriteField("funcName", "custom-valid")
 	writer.Close()
 
 	req, _ = http.NewRequest("POST", "/deploy", body)
@@ -65,6 +66,9 @@ func TestDeployHandler(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected status 201, got %d. Body: %s", w.Code, w.Body.String())
 	}
+	if !bytes.Contains(w.Body.Bytes(), []byte(`"function":"custom-valid"`)) {
+		t.Errorf("expected custom function name in response, got %s", w.Body.String())
+	}
 
 	// Test case: Already exists
 	body2 := &bytes.Buffer{}
@@ -74,6 +78,7 @@ func TestDeployHandler(t *testing.T) {
 		t.Fatalf("failed to create form file: %v", err)
 	}
 	part2.Write(zipContent)
+	writer2.WriteField("funcName", "custom-valid")
 	writer2.Close()
 
 	req, _ = http.NewRequest("POST", "/deploy", body2)

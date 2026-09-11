@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -19,7 +20,7 @@ func registerDeployRoutes(router *gin.Engine) {
 }
 
 func deployHandler(c *gin.Context) {
-	file, err := c.FormFile("file")
+	reader, err := c.Request.MultipartReader()
 	if err != nil {
 		log.Println("ERROR while receiving form file: " + err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing zip file"})
@@ -34,18 +35,82 @@ func deployHandler(c *gin.Context) {
 		return
 	}
 
-	// Save zip file in the temporary directory
-	zipBaseName := file.Filename
-	zipFilePath := filepath.Join(tmpDir, "glambdar-file-"+zipBaseName)
-	if err = c.SaveUploadedFile(file, zipFilePath); err != nil {
-		log.Println("ERROR while saving form file: " + err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
+	var zipBaseName string
+	var zipFilePath string
+	var requestedFuncName string
+	rateLimit := 0
+	fileFound := false
+
+	for {
+		part, partErr := reader.NextPart()
+		if partErr == io.EOF {
+			break
+		}
+		if partErr != nil {
+			log.Println("ERROR while reading multipart form: " + partErr.Error())
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing zip file"})
+			return
+		}
+
+		switch part.FormName() {
+		case "file":
+			if fileFound {
+				continue
+			}
+			zipBaseName = filepath.Base(part.FileName())
+			if zipBaseName == "." || zipBaseName == "" {
+				continue
+			}
+			zipFilePath = filepath.Join(tmpDir, "glambdar-file-"+zipBaseName)
+			zipFile, createErr := os.Create(zipFilePath)
+			if createErr != nil {
+				log.Println("ERROR while creating temporary upload: " + createErr.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
+				return
+			}
+			_, copyErr := io.Copy(zipFile, part)
+			closeErr := zipFile.Close()
+			if copyErr != nil || closeErr != nil {
+				logErr := copyErr
+				if logErr == nil {
+					logErr = closeErr
+				}
+				log.Println("ERROR while saving form file: " + logErr.Error())
+				os.Remove(zipFilePath)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
+				return
+			}
+			fileFound = true
+		case "funcName":
+			value, readErr := io.ReadAll(part)
+			if readErr != nil {
+				log.Println("ERROR while reading function name: " + readErr.Error())
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function name"})
+				return
+			}
+			requestedFuncName = string(value)
+		case "rateLimit":
+			value, readErr := io.ReadAll(part)
+			if readErr == nil {
+				if parsed, parseErr := strconv.Atoi(string(value)); parseErr == nil {
+					rateLimit = parsed
+				}
+			}
+		}
+	}
+
+	if !fileFound {
+		log.Println("ERROR while receiving form file: missing file part")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing zip file"})
 		return
 	}
 	defer os.Remove(zipFilePath)
 
 	// Check if function already exists
-	funcName := strings.TrimSuffix(zipBaseName, filepath.Ext(zipBaseName))
+	funcName := requestedFuncName
+	if funcName == "" {
+		funcName = strings.TrimSuffix(zipBaseName, filepath.Ext(zipBaseName))
+	}
 	funcDir := filepath.Join(config.FunctionsDir, funcName)
 	if _, err = os.Stat(funcDir); err == nil {
 		existsError := fmt.Sprintf("function directory '%s' already exists", funcDir)
@@ -56,16 +121,6 @@ func deployHandler(c *gin.Context) {
 		log.Println("ERROR while checking if function exists: " + err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check if function directory exists"})
 		return
-	}
-
-	// Parse rate limit
-	rateLimitStr := c.PostForm("rateLimit")
-	rateLimit := 0
-	if rateLimitStr != "" {
-		rl, err := strconv.Atoi(rateLimitStr)
-		if err == nil {
-			rateLimit = rl
-		}
 	}
 
 	// Deploy the function
