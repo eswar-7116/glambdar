@@ -14,9 +14,10 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 
 ## Execution Flow
 
-1. A function is uploaded as a zip file
-2. The zip is extracted into a function-specific directory
+1. A function is uploaded as a zip file via `/deploy`
+2. The zip is stream-uploaded directly to S3 storage
 3. On invocation:
+   - If the function directory is not present locally in `~/.glambdar/functions`, the zip is downloaded from S3 storage and extracted on demand
    - A warm Docker container is acquired from the pool (or a new one started)
    - The function code is mounted
    - A Bun worker executes the function
@@ -24,8 +25,8 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
    - After execution, the container is returned to the pool for reuse
 
 4. The response is returned to the client
-5. Metadata and execution logs are tracked in a SQLite database for each function
-6. Functions can be queried or deleted via API routes
+5. Metadata and execution logs are tracked in a database for each function
+6. Functions can be queried or deleted via API routes (deleting a function removes code from S3, local cache, metadata, and logs)
 
 ---
 
@@ -36,6 +37,7 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
   > UDS is used for IPC, so Windows is not supported natively
 - **Go** (for building the runtime)
 - **Bun** (inside Docker container, managed by the `oven/bun:slim` container image)
+- **S3-compatible Object Storage** (AWS S3, SeaweedFS, MinIO, RustFS, Ceph, etc.)
 
 ---
 
@@ -43,25 +45,41 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 
 - Glambdar relies on Docker for function isolation. Ensure the Docker daemon is running before starting the runtime.
 
-- The runtime will automatically create a `.glambdar` directory in your user home directory to store functions, logs, and metadata.
+- Glambdar will automatically create a `.glambdar` directory in your user home directory for local function caches, logs, and database files (if using SQLite).
 
 ---
 
 ## Configuration
 
-### Database
+Glambdar configuration can be customized by creating a `~/.glambdar/config.json` file.
 
-By default, Glambdar uses a local SQLite database (`~/.glambdar/glambdar.db`) with WAL mode enabled.
-To use PostgreSQL or MySQL, create a `~/.glambdar/config.json` file:
-
-```json
+```jsonc
 {
-  "type": "postgres",
-  "dsn": "host=localhost user=gorm password=gorm dbname=gorm port=9920 sslmode=disable TimeZone=UTC"
+  "type": "sqlite", // sqlite, postgres, or mysql
+  "dsn": "/home/user/.glambdar/glambdar.db",
+  "s3": {
+    "endpoint": "http://localhost:8333", // Custom endpoint for S3 compatible API (MinIO, SeaweedFS, etc.) or "" for AWS
+    "region": "us-east-1",
+    "bucket": "my-bucket",
+    "access_key_id": "YOUR_ACCESS_KEY",
+    "secret_access_key": "YOUR_SECRET_KEY",
+    "session_token": "",
+    "force_path_style": true, // Set to true when using custom S3 endpoints
+  },
 }
 ```
 
+### Database
+
+By default, Glambdar uses a local SQLite database (`~/.glambdar/glambdar.db`) with WAL mode enabled.
+To use PostgreSQL or MySQL, update the `type` and `dsn` fields in `~/.glambdar/config.json`.
+
 _(Valid `type` values are `sqlite`, `postgres`, and `mysql`)_
+
+### S3 Storage
+
+Glambdar stores function zips in S3 storage instead of local disk storage.
+Any S3-compatible provider is supported (e.g. AWS S3, SeaweedFS, MinIO, RustFS). The zips are downloaded and extracted locally on-demand when invoked.
 
 ### Authentication & RBAC
 
@@ -166,9 +184,10 @@ curl -X DELETE -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" http://localhost:8000/del/
 POST /deploy
 ```
 
-- Upload a zip file
-- Glambdar extracts the zip file into `GLAMBDAR_DIR/functions/<name>`
+- Upload a zip file (`file` form field)
+- Streamed directly to S3 storage (`<funcName>.zip`)
 - Initializes metadata
+- **Optional**: `funcName` (form field) - custom function name (defaults to zip filename without extension)
 - **Optional**: `rateLimit` (form field) - set a maximum requests per second for this function (default: `0` for unlimited)
 
 ### Configure a function
@@ -187,6 +206,7 @@ POST /invoke/:name
 ```
 
 - Runs the function in an isolated Docker container
+- Downloads function zip from S3 storage if not cached locally in `~/.glambdar/functions`
 - Uses a warm container pool for subsequent faster invocations
 - Uses UDS for runtime-worker communication
   > All invocations are **HTTP POST requests**.
@@ -221,7 +241,7 @@ GET /info/:name
 DELETE /del/:name
 ```
 
-- Removes function code, metadata, and logs
+- Removes function code from S3 storage, local extracted directory, metadata, and logs
 
 ---
 
