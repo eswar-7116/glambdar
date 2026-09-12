@@ -2,10 +2,10 @@ package config
 
 import (
 	"encoding/json"
+	"flag"
 	"os"
 	"path/filepath"
 	"strconv"
-	"flag"
 
 	"github.com/eswar-7116/glambdar/v3/internal/storage"
 )
@@ -122,15 +122,15 @@ func LoadConfig() (*Config, error) {
 	// Override with CLI flags (highest precedence)
 	fs := flag.NewFlagSet("config", flag.ContinueOnError)
 	var (
-		flagDBType string
-		flagDSN string
-		flagS3Endpoint string
-		flagS3Region string
-		flagS3Bucket string
-		flagS3AccessKeyID string
+		flagDBType            string
+		flagDSN               string
+		flagS3Endpoint        string
+		flagS3Region          string
+		flagS3Bucket          string
+		flagS3AccessKeyID     string
 		flagS3SecretAccessKey string
-		flagS3SessionToken string
-		flagS3ForcePathStyle string
+		flagS3SessionToken    string
+		flagS3ForcePathStyle  string
 	)
 	fs.StringVar(&flagDBType, "db_type", "", "Database type (sqlite, postgres, mysql)")
 	fs.StringVar(&flagDSN, "dsn", "", "Database DSN")
@@ -141,7 +141,9 @@ func LoadConfig() (*Config, error) {
 	fs.StringVar(&flagS3SecretAccessKey, "s3_secret_access_key", "", "S3 secret access key")
 	fs.StringVar(&flagS3SessionToken, "s3_session_token", "", "S3 session token")
 	fs.StringVar(&flagS3ForcePathStyle, "s3_force_path_style", "", "S3 force path style (true/false)")
-	_ = fs.Parse(os.Args[1:])
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		// Ignore errors from unknown flags
+	}
 
 	if flagDBType != "" {
 		switch flagDBType {
