@@ -8,6 +8,6 @@
         "access_key_id": "<YOUR_ACCESS_KEY_ID>",
         "secret_access_key": "<YOUR_SECRET_ACCESS_KEY>",
         "session_token": "<YOUR_SESSION_TOKEN (\"\" if not using AWS)>",
-        "force_path_style": true // Set to true if using a custom S3 endpoint (e.g., MinIO, SeaweedFS, RustFS, Ceph, etc.)
+        "force_path_style": true
     }
 }

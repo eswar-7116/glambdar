@@ -51,11 +51,13 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 
 ## Configuration
 
+> **Configuration precedence:** CLI flags > Environment variables (`GLMBD_*`) > `config.json` values.
 Glambdar configuration can be customized by creating a `~/.glambdar/config.json` file.
+You can also configure via environment variables prefixed with `GLMBD_` or CLI flags (e.g., `--db_type`, `--dsn`). Run `glambdar --help` to see all available flags.
 
 ```jsonc
 {
-  "type": "sqlite", // sqlite, postgres, or mysql
+  "db_type": "sqlite", // sqlite, postgres, or mysql
   "dsn": "/home/user/.glambdar/glambdar.db",
   "s3": {
     "endpoint": "http://localhost:8333", // Custom endpoint for S3 compatible API (MinIO, SeaweedFS, etc.) or "" for AWS
@@ -72,9 +74,9 @@ Glambdar configuration can be customized by creating a `~/.glambdar/config.json`
 ### Database
 
 By default, Glambdar uses a local SQLite database (`~/.glambdar/glambdar.db`) with WAL mode enabled.
-To use PostgreSQL or MySQL, update the `type` and `dsn` fields in `~/.glambdar/config.json`.
+To use PostgreSQL or MySQL, update the `db_type` and `dsn` fields in `~/.glambdar/config.json`.
 
-_(Valid `type` values are `sqlite`, `postgres`, and `mysql`)_
+_(Valid `db_type` values are `sqlite`, `postgres`, and `mysql`)_
 
 ### S3 Storage
 

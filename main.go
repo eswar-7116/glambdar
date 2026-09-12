@@ -51,6 +51,10 @@ func main() {
 			}
 			return
 		}
+		if arg == "--help" || arg == "-h" || arg == "help" {
+			printHelp()
+			return
+		}
 	}
 	glambdar.Start()
 }
