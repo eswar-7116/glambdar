@@ -1,6 +1,8 @@
 package util_test
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,9 +24,27 @@ func init() {
 	os.Setenv("HOME", tempHome)
 }
 
+func helperOpenZip(t *testing.T, path string) (*os.File, int64) {
+	t.Helper()
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, 0
+	}
+	st, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, 0
+	}
+	return f, st.Size()
+}
+
 func TestExtractZIP_ValidZIP(t *testing.T) {
 	config.InitPaths()
-	extractedDir, err := util.ExtractZIP(validZipFile, "vaild")
+	f, size := helperOpenZip(t, validZipFile)
+	if f != nil {
+		defer f.Close()
+	}
+	extractedDir, err := util.ExtractZIP(f, size, "vaild")
 	defer os.RemoveAll(extractedDir)
 	if err != nil {
 		t.Fatalf("Expected no error, but got: %v", err)
@@ -38,7 +58,11 @@ func TestExtractZIP_ValidZIP(t *testing.T) {
 
 func TestExtractZIP_InvalidZIP(t *testing.T) {
 	config.InitPaths()
-	_, err := util.ExtractZIP(invalidZipFile, "invalid")
+	f, size := helperOpenZip(t, invalidZipFile)
+	if f != nil {
+		defer f.Close()
+	}
+	_, err := util.ExtractZIP(f, size, "invalid")
 	defer os.RemoveAll(filepath.Join(config.FunctionsDir, "invalid"))
 	if err == nil || !strings.Contains(err.Error(), "error opening zip") {
 		t.Fatalf("Expected error opening zip, but got: %v", err)
@@ -47,7 +71,11 @@ func TestExtractZIP_InvalidZIP(t *testing.T) {
 
 func TestExtractZIP_EmptyZIP(t *testing.T) {
 	config.InitPaths()
-	extractedDir, err := util.ExtractZIP(emptyZipFile, "empty")
+	f, size := helperOpenZip(t, emptyZipFile)
+	if f != nil {
+		defer f.Close()
+	}
+	extractedDir, err := util.ExtractZIP(f, size, "empty")
 	defer os.RemoveAll(extractedDir)
 	if err != nil {
 		t.Fatalf("Expected no error, but got: %v", err)
@@ -65,9 +93,17 @@ func TestExtractZIP_EmptyZIP(t *testing.T) {
 
 func TestExtractZIP_NoZip(t *testing.T) {
 	config.InitPaths()
-	_, err := util.ExtractZIP(noZipFile, "noZip")
+	f, size := helperOpenZip(t, noZipFile)
+	if f != nil {
+		defer f.Close()
+	}
+	var rAt io.ReaderAt = f
+	if f == nil {
+		rAt = bytes.NewReader(nil)
+	}
+	_, err := util.ExtractZIP(rAt, size, "noZip")
 	defer os.RemoveAll(filepath.Join(config.FunctionsDir, "noZip"))
 	if err == nil {
-		t.Fatalf("Expected error from os.MkdirAll, but got: %v", err)
+		t.Fatalf("Expected error from opening zip, but got nil")
 	}
 }

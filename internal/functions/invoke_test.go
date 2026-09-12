@@ -1,6 +1,7 @@
 package functions_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -58,7 +59,8 @@ func TestInvoke_HappyPath(t *testing.T) {
 
 	funcDir := filepath.Join(config.FunctionsDir, "valid")
 	if _, err := os.Stat(funcDir); os.IsNotExist(err) {
-		if err := functions.Deploy(validZipFile, "valid", 0); err != nil {
+		zipBytes, _ := os.ReadFile(validZipFile)
+		if err := functions.Deploy(t.Context(), "valid", bytes.NewReader(zipBytes), 0); err != nil {
 			t.Fatalf("deploy failed: %v", err)
 		}
 	}
@@ -106,7 +108,8 @@ func TestInvoke_Methods(t *testing.T) {
 	defer cleanup()
 
 	funcName := "methods-func"
-	if err := functions.Deploy(validZipFile, funcName, 0); err != nil {
+	zipBytes, _ := os.ReadFile(validZipFile)
+	if err := functions.Deploy(t.Context(), funcName, bytes.NewReader(zipBytes), 0); err != nil {
 		t.Fatalf("deploy failed: %v", err)
 	}
 

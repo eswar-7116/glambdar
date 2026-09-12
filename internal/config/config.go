@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"github.com/eswar-7116/glambdar/v3/internal/storage"
 )
 
 type DBType int
@@ -46,8 +48,9 @@ func (t *DBType) UnmarshalJSON(data []byte) error {
 }
 
 type Config struct {
-	Type DBType `json:"type"` // sqlite, postgres, mysql
-	DSN  string `json:"dsn"`  // Data Source Name
+	Type DBType           `json:"type"` // sqlite, postgres, mysql
+	DSN  string           `json:"dsn"`  // Data Source Name
+	S3   storage.S3Config `json:"s3"`   // S3 storage config
 }
 
 func LoadConfig() (*Config, error) {

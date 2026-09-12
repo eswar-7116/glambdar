@@ -6,6 +6,7 @@ import (
 
 	"github.com/eswar-7116/glambdar/v3/internal/docker"
 	"github.com/eswar-7116/glambdar/v3/internal/pool"
+	"github.com/eswar-7116/glambdar/v3/internal/storage"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -19,6 +20,7 @@ var (
 	DockerClient = &docker.Docker{}
 	PoolManager  = &pool.PoolManager{}
 	DB           *gorm.DB
+	StorageClient storage.Storage
 )
 
 func InitPaths() error {
@@ -65,6 +67,14 @@ func InitPathsWithBase(baseDir string) error {
 
 	if config.Type == DBTypeSQLite {
 		DB.Exec("PRAGMA journal_mode=WAL;")
+	}
+
+	if config.S3.Bucket != "" || config.S3.Endpoint != "" {
+		s3Store, err := storage.NewS3Storage(config.S3)
+		if err != nil {
+			return err
+		}
+		StorageClient = s3Store
 	}
 
 	return nil

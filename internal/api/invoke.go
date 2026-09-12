@@ -22,18 +22,6 @@ func registerInvokeRoutes(router *gin.Engine) {
 
 func invokeHandler(c *gin.Context) {
 	name := c.Param("name")
-	funcDir := filepath.Join(config.FunctionsDir, name)
-
-	// Check if function exists
-	info, err := os.Stat(funcDir)
-	if err != nil || !info.IsDir() {
-		abs, _ := filepath.Abs(funcDir)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error":   "Function not found!",
-			"funcDir": abs,
-		})
-		return
-	}
 
 	// Read request headers
 	headers := make(map[string]string)
@@ -73,6 +61,15 @@ func invokeHandler(c *gin.Context) {
 		if errors.Is(err, functions.ErrRateLimited) {
 			c.JSON(http.StatusTooManyRequests, gin.H{
 				"error": "Rate limit exceeded. Please try again later.",
+			})
+			return
+		}
+		if os.IsNotExist(err) || strings.Contains(err.Error(), "no such file") || strings.Contains(err.Error(), "NoSuchKey") {
+			funcDir := filepath.Join(config.FunctionsDir, name)
+			abs, _ := filepath.Abs(funcDir)
+			c.JSON(http.StatusNotFound, gin.H{
+				"error":   "Function not found!",
+				"funcDir": abs,
 			})
 			return
 		}

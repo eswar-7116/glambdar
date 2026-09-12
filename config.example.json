@@ -1,4 +1,0 @@
-{
-    "type": "<SQLITE|POSTGRESQL|MYSQL>",
-    "dsn": "<DSN>"
-}

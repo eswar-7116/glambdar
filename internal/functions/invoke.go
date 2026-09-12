@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/docker"
 	"github.com/eswar-7116/glambdar/v3/internal/pool"
 	"github.com/eswar-7116/glambdar/v3/internal/sockutil"
+	"github.com/eswar-7116/glambdar/v3/internal/util"
 	"github.com/moby/moby/api/pkg/stdcopy"
 )
 
@@ -42,6 +44,28 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 
 	// Check if the function's directory exists
 	info, err := os.Stat(funcDir)
+	if os.IsNotExist(err) && config.StorageClient != nil {
+		objectKey := funcName + ".zip"
+		readerCloser, downloadErr := config.StorageClient.Download(ctx, objectKey)
+		if downloadErr != nil {
+			return InvokeResponse{}, fmt.Errorf("failed to download function zip from storage: %w", downloadErr)
+		}
+		defer readerCloser.Close()
+
+		// Read into buffer to extract
+		buf := new(bytes.Buffer)
+		if _, copyErr := io.Copy(buf, readerCloser); copyErr != nil {
+			return InvokeResponse{}, fmt.Errorf("failed to read downloaded function zip: %w", copyErr)
+		}
+
+		bytesReader := bytes.NewReader(buf.Bytes())
+		if _, extractErr := util.ExtractZIP(bytesReader, int64(buf.Len()), funcName); extractErr != nil {
+			return InvokeResponse{}, fmt.Errorf("failed to extract downloaded function zip: %w", extractErr)
+		}
+
+		info, err = os.Stat(funcDir)
+	}
+
 	if err != nil {
 		return InvokeResponse{}, err
 	}
@@ -158,5 +182,3 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 	res.ColdStart = !warm
 	return res, nil
 }
-
-

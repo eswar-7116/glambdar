@@ -1,9 +1,12 @@
 package functions_test
 
 import (
+	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -29,14 +32,13 @@ func TestDeploy_CreatesFunctionAndMetadata(t *testing.T) {
 	config.DB = db
 
 	t.Log("Deploying...")
-	err = functions.Deploy(validZipFile, "testFunc", 0)
+	zipBytes, err := os.ReadFile(validZipFile)
+	if err != nil {
+		t.Fatalf("failed to read test zip file: %v", err)
+	}
+	err = functions.Deploy(context.Background(), "testFunc", bytes.NewReader(zipBytes), 0)
 	if err != nil {
 		t.Fatalf("deploy failed: %v", err)
-	}
-
-	funcDir := filepath.Join(config.FunctionsDir, "testFunc")
-	if _, err := os.Stat(funcDir); err != nil {
-		t.Fatalf("function directory not created")
 	}
 
 	md, err := functions.LoadMetadata("testFunc")

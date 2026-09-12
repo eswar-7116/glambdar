@@ -11,20 +11,19 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 )
 
-func ExtractZIP(zipFilePath string, funcName string) (string, error) {
+func ExtractZIP(r io.ReaderAt, size int64, funcName string) (string, error) {
 	destDir := filepath.Join(config.FunctionsDir, funcName)
 
 	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return "nil", fmt.Errorf("error creating function dir: %w", err)
+		return "", fmt.Errorf("error creating function dir: %w", err)
 	}
 
-	r, err := zip.OpenReader(zipFilePath)
+	zipReader, err := zip.NewReader(r, size)
 	if err != nil {
 		return "", fmt.Errorf("error opening zip: %w", err)
 	}
-	defer r.Close()
 
-	for _, f := range r.File {
+	for _, f := range zipReader.File {
 		fpath := filepath.Join(destDir, f.Name)
 
 		if !strings.HasPrefix(fpath, filepath.Clean(destDir)+string(os.PathSeparator)) {
@@ -44,16 +43,18 @@ func ExtractZIP(zipFilePath string, funcName string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("error extracting zip: %w", err)
 		}
-		defer dst.Close()
 
 		src, err := f.Open()
 		if err != nil {
+			dst.Close()
 			return "", fmt.Errorf("error extracting zip: %w", err)
 		}
-		defer src.Close()
 
-		if _, err = io.Copy(dst, src); err != nil {
-			return "", fmt.Errorf("error extracting zip: %w", err)
+		_, copyErr := io.Copy(dst, src)
+		src.Close()
+		dst.Close()
+		if copyErr != nil {
+			return "", fmt.Errorf("error extracting zip: %w", copyErr)
 		}
 	}
 
