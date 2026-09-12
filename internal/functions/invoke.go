@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -133,11 +132,7 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 		}
 	}()
 
-	md.LastInvokedAt = time.Now().UTC()
-	md.InvokeCount++
-	if err := SaveMetadata(md); err != nil {
-		log.Println("ERROR saving metadata:", err)
-	}
+	invokedAt := counterFor(funcName).Increment()
 
 	// Dial the container's UDS and send the request
 	workerSock := filepath.Join(e.SocketPath, "glambdar.sock")
@@ -164,7 +159,7 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 	}
 
 	// Process logs
-	out, err := d.ContainerLogs(ctx, e.ContainerID, md.LastInvokedAt.Format(time.RFC3339))
+	out, err := d.ContainerLogs(ctx, e.ContainerID, invokedAt.Format(time.RFC3339))
 	if err == nil {
 		defer out.Close()
 		var stdout, stderr bytes.Buffer
@@ -173,7 +168,7 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 		// Save to DB
 		SaveLog(&Log{
 			FuncName:  funcName,
-			InvokedAt: md.LastInvokedAt,
+			InvokedAt: invokedAt,
 			Stdout:    stdout.String(),
 			Stderr:    stderr.String(),
 		})

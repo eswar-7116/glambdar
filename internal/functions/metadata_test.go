@@ -53,6 +53,39 @@ func TestSaveAndLoadMetadata(t *testing.T) {
 	}
 }
 
+func TestInvokeCounterFlushesBatch(t *testing.T) {
+	setupTestDB(t)
+
+	metadata := &functions.Metadata{Name: "batched-function"}
+	if err := functions.SaveMetadata(metadata); err != nil {
+		t.Fatalf("failed to create metadata: %v", err)
+	}
+
+	counter := functions.NewInvokeCounter(metadata.Name, time.Hour)
+	first := counter.Increment()
+	latest := counter.Increment()
+
+	loaded, err := functions.LoadMetadata(metadata.Name)
+	if err != nil {
+		t.Fatalf("failed to load metadata before flush: %v", err)
+	}
+	if loaded.InvokeCount != 0 {
+		t.Fatalf("expected no metadata write before flush, got count %d", loaded.InvokeCount)
+	}
+
+	counter.Flush()
+	loaded, err = functions.LoadMetadata(metadata.Name)
+	if err != nil {
+		t.Fatalf("failed to load metadata after flush: %v", err)
+	}
+	if loaded.InvokeCount != 2 {
+		t.Errorf("expected batched invoke count 2, got %d", loaded.InvokeCount)
+	}
+	if loaded.LastInvokedAt.Before(first) || loaded.LastInvokedAt.After(latest) {
+		t.Errorf("expected latest invocation timestamp to be persisted, got %v", loaded.LastInvokedAt)
+	}
+}
+
 func TestLoadMetadataFileNotFound(t *testing.T) {
 	setupTestDB(t)
 	_, err := functions.LoadMetadata("non_existent_func")

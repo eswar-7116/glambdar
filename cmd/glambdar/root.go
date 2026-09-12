@@ -115,6 +115,7 @@ func Start() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		fmt.Println("Server shutdown failed:", err)
 	}
+	functions.FlushInvokeCounters()
 
 	// Clean up all containers
 	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
