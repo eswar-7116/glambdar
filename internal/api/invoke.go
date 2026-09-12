@@ -64,7 +64,7 @@ func invokeHandler(c *gin.Context) {
 			})
 			return
 		}
-		if os.IsNotExist(err) || strings.Contains(err.Error(), "no such file") || strings.Contains(err.Error(), "NoSuchKey") {
+		if os.IsNotExist(err) || errors.Is(err, os.ErrNotExist) || strings.Contains(err.Error(), "no such file") || strings.Contains(err.Error(), "file does not exist") || strings.Contains(err.Error(), "NoSuchKey") {
 			funcDir := filepath.Join(config.FunctionsDir, name)
 			abs, _ := filepath.Abs(funcDir)
 			c.JSON(http.StatusNotFound, gin.H{

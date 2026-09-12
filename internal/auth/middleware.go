@@ -18,7 +18,9 @@ var auditLogChan = make(chan AuditLog, 1000)
 func init() {
 	go func() {
 		for logEntry := range auditLogChan {
-			config.DB.Create(&logEntry)
+			if db := config.DB; db != nil {
+				db.Create(&logEntry)
+			}
 		}
 	}()
 }

@@ -26,6 +26,8 @@ func Deploy(ctx context.Context, funcName string, zipReader io.Reader, rateLimit
 		if err := config.StorageClient.Upload(ctx, objectKey, zipReader); err != nil {
 			return fmt.Errorf("failed to upload zip to storage: %w", err)
 		}
+	} else {
+		return fmt.Errorf("storage client is not initialized")
 	}
 
 	// Initialize function metadata

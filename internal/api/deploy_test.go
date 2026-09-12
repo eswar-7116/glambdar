@@ -12,6 +12,7 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/auth/authtest"
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
+	"github.com/eswar-7116/glambdar/v3/internal/storage"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,6 +26,7 @@ func TestDeployHandler(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	config.InitPathsWithBase(tempDir)
+	config.StorageClient = storage.NewMockStorage()
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 	adminKey := authtest.SetupTestAuth(t)
 

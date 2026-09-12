@@ -10,6 +10,7 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/auth/authtest"
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
+	"github.com/eswar-7116/glambdar/v3/internal/storage"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,11 +24,14 @@ func TestDeleteHandler(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	config.InitPathsWithBase(tempDir)
+	mockStore := storage.NewMockStorage()
+	config.StorageClient = mockStore
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 	adminKey := authtest.SetupTestAuth(t)
 
-	// Create a dummy function directory and metadata
+	// Create a dummy function directory and metadata and upload mock zip
 	funcName := "testfunc"
+	mockStore.Upload(t.Context(), funcName+".zip", nil)
 	funcDir := filepath.Join(tempDir, "functions", funcName)
 	os.MkdirAll(funcDir, 0755)
 	functions.SaveMetadata(&functions.Metadata{Name: funcName})
@@ -58,6 +62,11 @@ func TestDeleteHandler(t *testing.T) {
 
 	if _, err := os.Stat(funcDir); !os.IsNotExist(err) {
 		t.Errorf("expected function directory to be deleted, but it still exists")
+	}
+
+	// Verify zip is deleted from storage
+	if _, err := mockStore.Download(t.Context(), funcName+".zip"); !os.IsNotExist(err) {
+		t.Errorf("expected function zip to be deleted from storage")
 	}
 
 	// Verify log is deleted

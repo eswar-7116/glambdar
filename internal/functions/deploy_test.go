@@ -13,6 +13,7 @@ import (
 
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
+	"github.com/eswar-7116/glambdar/v3/internal/storage"
 )
 
 var validZipFile = filepath.Join("..", "..", "test_data", "zip", "valid.zip")
@@ -20,6 +21,7 @@ var validZipFile = filepath.Join("..", "..", "test_data", "zip", "valid.zip")
 func TestDeploy_CreatesFunctionAndMetadata(t *testing.T) {
 	tmp := t.TempDir()
 	config.FunctionsDir = tmp
+	config.StorageClient = storage.NewMockStorage()
 
 	// setup test db
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
