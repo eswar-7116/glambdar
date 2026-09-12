@@ -6,20 +6,13 @@ import (
 
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	"github.com/eswar-7116/glambdar/v3/internal/testutil"
 )
 
 func setupTestDB(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatalf("failed to create memory db: %v", err)
-	}
-	db.AutoMigrate(&functions.Metadata{}, &functions.Log{})
-	config.DB = db
+	t.Helper()
+	testutil.SetupTestDB(t)
+	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 }
 
 func TestSaveAndLoadMetadata(t *testing.T) {
@@ -48,12 +41,12 @@ func TestSaveAndLoadMetadata(t *testing.T) {
 	if loadedMetadata.InvokeCount != metadata.InvokeCount {
 		t.Errorf("expected InvokeCount %d, got %d", metadata.InvokeCount, loadedMetadata.InvokeCount)
 	}
-	
+
 	err = functions.DeleteMetadata(metadata.Name)
 	if err != nil {
 		t.Fatalf("expected no error deleting metadata, got %v", err)
 	}
-	
+
 	_, err = functions.LoadMetadata(metadata.Name)
 	if err == nil {
 		t.Errorf("expected error loading deleted metadata, got nil")

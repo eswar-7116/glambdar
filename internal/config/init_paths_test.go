@@ -7,11 +7,21 @@ import (
 )
 
 func TestInitPathsWithBase(t *testing.T) {
+	dsn := os.Getenv("TEST_DSN")
+	if dsn == "" {
+		t.Skip("TEST_DSN not set. Skipping InitPathsWithBase test")
+	}
+
 	tempDir, err := os.MkdirTemp("", "glambdar-test-*")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
+
+	ConfigDir = tempDir
+	if err := SaveConfig(&Config{Type: DBTypePostgres, DSN: dsn}); err != nil {
+		t.Fatalf("failed to write temp config: %v", err)
+	}
 
 	err = InitPathsWithBase(tempDir)
 	if err != nil {
@@ -31,14 +41,10 @@ func TestInitPathsWithBase(t *testing.T) {
 		t.Errorf("expected FunctionsDir to be created, but it does not exist")
 	}
 
-
-
 	expectedWorkerPath := filepath.Join(tempDir, "worker", "glambdar-worker.js")
 	if WorkerPath != expectedWorkerPath {
 		t.Errorf("expected WorkerPath to be %s, got %s", expectedWorkerPath, WorkerPath)
 	}
-
-
 
 	if DockerClient.WorkerPath != expectedWorkerPath {
 		t.Errorf("expected DockerClient.WorkerPath to be %s, got %s", expectedWorkerPath, DockerClient.WorkerPath)
@@ -46,14 +52,23 @@ func TestInitPathsWithBase(t *testing.T) {
 }
 
 func TestInitPaths(t *testing.T) {
+	dsn := os.Getenv("TEST_DSN")
+	if dsn == "" {
+		t.Skip("TEST_DSN not set. Skipping InitPaths test")
+	}
+
 	tempHome, _ := os.MkdirTemp("", "home-*")
 	defer os.RemoveAll(tempHome)
 	t.Setenv("HOME", tempHome)
 
-	// This test calls InitPaths which uses the user's home directory.
-	// We just want to make sure it doesn't return an error.
-	// In a real environment, we might want to mock os.UserHomeDir if possible,
-	// but for now, a simple check for no error is enough.
+	configDir := filepath.Join(tempHome, ".glambdar")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("failed to create config dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "config.json"), []byte(`{"db_type":"postgres","dsn":"`+dsn+`"}`), 0600); err != nil {
+		t.Fatalf("failed to write config: %v", err)
+	}
+
 	err := InitPaths()
 	if err != nil {
 		t.Errorf("InitPaths failed: %v", err)

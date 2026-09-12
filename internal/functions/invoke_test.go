@@ -11,6 +11,7 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/docker"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
 	"github.com/eswar-7116/glambdar/v3/internal/storage"
+	"github.com/eswar-7116/glambdar/v3/internal/testutil"
 	"gorm.io/gorm/logger"
 )
 
@@ -22,7 +23,7 @@ func setupInvokeEnv(t *testing.T) func() {
 	}
 
 	tmp := t.TempDir()
-	config.InitPathsWithBase(tmp)
+	testutil.SetupTestConfig(t, tmp)
 	config.StorageClient = storage.NewMockStorage()
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 	config.DB.Logger = logger.Default.LogMode(logger.Silent)

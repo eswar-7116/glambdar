@@ -6,13 +6,15 @@ import (
 
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
-	"gorm.io/driver/sqlite"
+	"github.com/eswar-7116/glambdar/v3/internal/testutil"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 func setupLogsTestDB(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+	dsn := testutil.RequireTestDSN(t)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
@@ -20,6 +22,7 @@ func setupLogsTestDB(t *testing.T) {
 	}
 	db.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 	config.DB = db
+	testutil.ResetTestDB(t)
 }
 
 func TestSaveAndGetLogs(t *testing.T) {

@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -13,7 +12,6 @@ func TestDBTypeJSON(t *testing.T) {
 		dbType   DBType
 		expected string
 	}{
-		{"sqlite", DBTypeSQLite, `"sqlite"`},
 		{"postgres", DBTypePostgres, `"postgres"`},
 		{"mysql", DBTypeMySQL, `"mysql"`},
 	}
@@ -50,24 +48,17 @@ func TestConfigLoadSave(t *testing.T) {
 	ConfigDir = tempDir
 	defer func() { ConfigDir = originalConfigDir }()
 
-	t.Run("DefaultConfigCreation", func(t *testing.T) {
-		cfg, err := LoadConfig()
-		if err != nil {
-			t.Fatalf("LoadConfig failed: %v", err)
-		}
-		if cfg.Type != DBTypeSQLite {
-			t.Errorf("Expected default Type to be SQLite, got %v", cfg.Type)
-		}
-		expectedDefaultDSN := filepath.Join(tempDir, "glambdar.db")
-		if cfg.DSN != expectedDefaultDSN {
-			t.Errorf("Expected default DSN to be %s, got %s", expectedDefaultDSN, cfg.DSN)
+	t.Run("MissingConfigFile", func(t *testing.T) {
+		_, err := LoadConfig()
+		if err == nil {
+			t.Fatal("expected LoadConfig to fail when config.json is missing")
 		}
 	})
 
 	t.Run("SaveAndLoadCustomConfig", func(t *testing.T) {
 		customCfg := &Config{
 			Type: DBTypePostgres,
-			DSN:  "host=localhost user=test",
+			DSN:  "host=localhost user=test dbname=glambdar",
 		}
 		if err := SaveConfig(customCfg); err != nil {
 			t.Fatalf("SaveConfig failed: %v", err)
@@ -80,8 +71,8 @@ func TestConfigLoadSave(t *testing.T) {
 		if cfg2.Type != DBTypePostgres {
 			t.Errorf("Expected Type to be Postgres, got %v", cfg2.Type)
 		}
-		if cfg2.DSN != "host=localhost user=test" {
-			t.Errorf("Expected DSN to be 'host=localhost user=test', got %s", cfg2.DSN)
+		if cfg2.DSN != "host=localhost user=test dbname=glambdar" {
+			t.Errorf("Expected DSN to be 'host=localhost user=test dbname=glambdar', got %s", cfg2.DSN)
 		}
 	})
 }

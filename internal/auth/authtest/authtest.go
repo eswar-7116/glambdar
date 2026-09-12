@@ -1,7 +1,10 @@
 package authtest
 
 import (
+	"fmt"
 	"testing"
+	"time"
+
 	"github.com/eswar-7116/glambdar/v3/internal/auth"
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 )
@@ -16,14 +19,12 @@ func SetupTestAuth(t *testing.T) string {
 	}
 
 	apiKey := &auth.APIKey{
+		KeyHash:   auth.HashKey(rawKey),
 		KeyPrefix: auth.KeyPrefixFromRaw(rawKey),
-		Name:      "test-root",
+		Name:      fmt.Sprintf("test-root-%d", time.Now().UnixNano()),
 		Role:      auth.RoleAdmin,
 		IsRoot:    true,
 	}
-	// Use reflection or just set hash, but wait KeyHash is exported!
-	apiKey.KeyHash = auth.HashKey(rawKey)
-	
 	if err := config.DB.Create(apiKey).Error; err != nil {
 		t.Fatalf("failed to create test admin key: %v", err)
 	}

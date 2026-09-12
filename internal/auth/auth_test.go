@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/eswar-7116/glambdar/v3/internal/config"
+	"github.com/eswar-7116/glambdar/v3/internal/testutil"
 	"github.com/gin-gonic/gin"
 )
 
@@ -46,7 +47,7 @@ func setupIntegrationTest(t *testing.T) (string, *gin.Engine, func()) {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
 
-	config.InitPathsWithBase(tempDir)
+	testutil.SetupTestConfig(t, tempDir)
 	config.DB.AutoMigrate(&APIKey{}, &AuditLog{})
 	adminKey := SetupTestAuth(t)
 
@@ -211,7 +212,7 @@ func TestBootstrapRootKey_Idempotent(t *testing.T) {
 	tempDir, _ := os.MkdirTemp("", "glambdar-auth-bootstrap-*")
 	defer os.RemoveAll(tempDir)
 
-	config.InitPathsWithBase(tempDir)
+	testutil.SetupTestConfig(t, tempDir)
 	config.DB.AutoMigrate(&APIKey{})
 
 	if err := BootstrapRootKey(); err != nil {

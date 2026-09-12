@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
 	"github.com/eswar-7116/glambdar/v3/internal/storage"
+	"github.com/eswar-7116/glambdar/v3/internal/testutil"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var validZipFile = filepath.Join("..", "..", "test_data", "zip", "valid.zip")
@@ -24,7 +24,8 @@ func TestDeploy_CreatesFunctionAndMetadata(t *testing.T) {
 	config.StorageClient = storage.NewMockStorage()
 
 	// setup test db
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+	dsn := testutil.RequireTestDSN(t)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
@@ -32,6 +33,7 @@ func TestDeploy_CreatesFunctionAndMetadata(t *testing.T) {
 	}
 	db.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 	config.DB = db
+	testutil.ResetTestDB(t)
 
 	t.Log("Deploying...")
 	zipBytes, err := os.ReadFile(validZipFile)

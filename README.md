@@ -45,7 +45,7 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 
 - Glambdar relies on Docker for function isolation. Ensure the Docker daemon is running before starting the runtime.
 
-- Glambdar will automatically create a `.glambdar` directory in your user home directory for local function caches, logs, and database files (if using SQLite).
+- Glambdar will automatically create a `.glambdar` directory in your user home directory for local function caches, config, and runtime metadata.
 
 ---
 
@@ -57,8 +57,8 @@ You can also configure via environment variables prefixed with `GLMBD_` or CLI f
 
 ```jsonc
 {
-  "db_type": "sqlite", // sqlite, postgres, or mysql
-  "dsn": "/home/user/.glambdar/glambdar.db",
+  "db_type": "postgres", // postgres or mysql
+  "dsn": "postgres://user:pass@localhost:5432/glambdar",
   "s3": {
     "endpoint": "http://localhost:8333", // Custom endpoint for S3 compatible API (MinIO, SeaweedFS, etc.) or "" for AWS
     "region": "us-east-1",
@@ -73,10 +73,9 @@ You can also configure via environment variables prefixed with `GLMBD_` or CLI f
 
 ### Database
 
-By default, Glambdar uses a local SQLite database (`~/.glambdar/glambdar.db`) with WAL mode enabled.
-To use PostgreSQL or MySQL, update the `db_type` and `dsn` fields in `~/.glambdar/config.json`.
+Glambdar requires a PostgreSQL or MySQL database. Set the `db_type` and `dsn` fields in `~/.glambdar/config.json` to point at your database instance.
 
-_(Valid `db_type` values are `sqlite`, `postgres`, and `mysql`)_
+_(Valid `db_type` values are `postgres` and `mysql`)_
 
 ### S3 Storage
 

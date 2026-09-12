@@ -8,7 +8,7 @@ func printHelp() {
 Configuration can be provided via config.json, environment variables (GLMBD_*) or CLI flags. CLI flags have highest precedence.
 
 Available flags:
-  --db_type string               Database type (sqlite, postgres, mysql)
+  --db_type string               Database type (postgres, mysql)
   --dsn string                   Data source name
   --s3_endpoint string           S3 endpoint URL
   --s3_region string             S3 region

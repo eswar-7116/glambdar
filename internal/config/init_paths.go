@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -9,17 +10,16 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/storage"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 var (
-	ConfigDir    string
-	FunctionsDir string
-	WorkerPath   string
-	DockerClient = &docker.Docker{}
-	PoolManager  = &pool.PoolManager{}
-	DB           *gorm.DB
+	ConfigDir     string
+	FunctionsDir  string
+	WorkerPath    string
+	DockerClient  = &docker.Docker{}
+	PoolManager   = &pool.PoolManager{}
+	DB            *gorm.DB
 	StorageClient storage.Storage
 )
 
@@ -54,19 +54,13 @@ func InitPathsWithBase(baseDir string) error {
 		dialector = postgres.Open(config.DSN)
 	case DBTypeMySQL:
 		dialector = mysql.Open(config.DSN)
-	case DBTypeSQLite:
-		fallthrough
 	default:
-		dialector = sqlite.Open(config.DSN)
+		return fmt.Errorf("unsupported database type: only \"postgres\" and \"mysql\" are supported")
 	}
 
 	DB, err = gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
 		return err
-	}
-
-	if config.Type == DBTypeSQLite {
-		DB.Exec("PRAGMA journal_mode=WAL;")
 	}
 
 	if config.S3.Bucket != "" || config.S3.Endpoint != "" {

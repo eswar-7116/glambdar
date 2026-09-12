@@ -1,5 +1,5 @@
 {
-    "type": "<SQLITE|POSTGRESQL|MYSQL>",
+    "db_type": "<postgres|mysql>",
     "dsn": "<DSN>",
     "s3": {
         "endpoint": "<YOUR_S3_ENDPOINT>",

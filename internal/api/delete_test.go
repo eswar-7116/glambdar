@@ -11,6 +11,7 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
 	"github.com/eswar-7116/glambdar/v3/internal/storage"
+	"github.com/eswar-7116/glambdar/v3/internal/testutil"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,7 +24,7 @@ func TestDeleteHandler(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	config.InitPathsWithBase(tempDir)
+	testutil.SetupTestConfig(t, tempDir)
 	mockStore := storage.NewMockStorage()
 	config.StorageClient = mockStore
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})

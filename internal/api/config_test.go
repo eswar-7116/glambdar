@@ -12,6 +12,7 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/auth/authtest"
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
+	"github.com/eswar-7116/glambdar/v3/internal/testutil"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,7 +25,7 @@ func TestConfigHandler_UpdateRateLimit(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	config.InitPathsWithBase(tempDir)
+	testutil.SetupTestConfig(t, tempDir)
 	config.DB.AutoMigrate(&functions.Metadata{}, &functions.Log{})
 	adminKey := authtest.SetupTestAuth(t)
 

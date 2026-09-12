@@ -3,6 +3,8 @@ package config
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,21 +15,16 @@ import (
 type DBType int
 
 const (
-	DBTypeSQLite DBType = iota
-	DBTypePostgres
+	DBTypePostgres DBType = iota
 	DBTypeMySQL
 )
 
 func (t DBType) MarshalJSON() ([]byte, error) {
 	switch t {
-	case DBTypePostgres:
-		return json.Marshal("postgres")
 	case DBTypeMySQL:
 		return json.Marshal("mysql")
-	case DBTypeSQLite:
-		fallthrough
 	default:
-		return json.Marshal("sqlite")
+		return json.Marshal("postgres")
 	}
 }
 
@@ -37,20 +34,18 @@ func (t *DBType) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	switch s {
-	case "postgres":
-		*t = DBTypePostgres
 	case "mysql":
 		*t = DBTypeMySQL
-	case "sqlite":
-		fallthrough
+	case "postgres":
+		*t = DBTypePostgres
 	default:
-		*t = DBTypeSQLite
+		return fmt.Errorf("unsupported db_type %q: must be \"postgres\" or \"mysql\"", s)
 	}
 	return nil
 }
 
 type Config struct {
-	Type DBType           `json:"db_type"` // sqlite, postgres, mysql
+	Type DBType           `json:"db_type"` // postgres, mysql
 	DSN  string           `json:"dsn"`     // Data Source Name
 	S3   storage.S3Config `json:"s3"`      // S3 storage config
 }
@@ -61,12 +56,10 @@ func LoadConfig() (*Config, error) {
 	file, err := os.Open(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Create default config
-			defaultConfig := &Config{
-				Type: DBTypeSQLite,
-				DSN:  filepath.Join(ConfigDir, "glambdar.db"),
-			}
-			return defaultConfig, SaveConfig(defaultConfig)
+			return nil, fmt.Errorf(
+				"config file not found at %s: create it with a \"db_type\" of \"postgres\" or \"mysql\" and a valid \"dsn\"",
+				configPath,
+			)
 		}
 		return nil, err
 	}
@@ -80,14 +73,12 @@ func LoadConfig() (*Config, error) {
 	// Override with environment variables if set
 	if v := os.Getenv("GLMBD_DB_TYPE"); v != "" {
 		switch v {
-		case "sqlite":
-			config.Type = DBTypeSQLite
 		case "postgres":
 			config.Type = DBTypePostgres
 		case "mysql":
 			config.Type = DBTypeMySQL
 		default:
-			// leave as is if unrecognized
+			return nil, fmt.Errorf("unsupported GLMBD_DB_TYPE %q: must be \"postgres\" or \"mysql\"", v)
 		}
 	}
 	if v := os.Getenv("GLMBD_DSN"); v != "" {
@@ -121,6 +112,7 @@ func LoadConfig() (*Config, error) {
 
 	// Override with CLI flags (highest precedence)
 	fs := flag.NewFlagSet("config", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
 	var (
 		flagDBType            string
 		flagDSN               string
@@ -132,7 +124,7 @@ func LoadConfig() (*Config, error) {
 		flagS3SessionToken    string
 		flagS3ForcePathStyle  string
 	)
-	fs.StringVar(&flagDBType, "db_type", "", "Database type (sqlite, postgres, mysql)")
+	fs.StringVar(&flagDBType, "db_type", "", "Database type (postgres, mysql)")
 	fs.StringVar(&flagDSN, "dsn", "", "Database DSN")
 	fs.StringVar(&flagS3Endpoint, "s3_endpoint", "", "S3 endpoint")
 	fs.StringVar(&flagS3Region, "s3_region", "", "S3 region")
@@ -147,12 +139,12 @@ func LoadConfig() (*Config, error) {
 
 	if flagDBType != "" {
 		switch flagDBType {
-		case "sqlite":
-			config.Type = DBTypeSQLite
 		case "postgres":
 			config.Type = DBTypePostgres
 		case "mysql":
 			config.Type = DBTypeMySQL
+		default:
+			return nil, fmt.Errorf("unsupported --db_type %q: must be \"postgres\" or \"mysql\"", flagDBType)
 		}
 	}
 	if flagDSN != "" {
