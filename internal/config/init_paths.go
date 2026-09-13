@@ -17,6 +17,7 @@ var (
 	ConfigDir     string
 	FunctionsDir  string
 	WorkerPath    string
+	NodeID        string
 	DockerClient  = &docker.Docker{}
 	PoolManager   = &pool.PoolManager{}
 	DB            *gorm.DB
@@ -47,6 +48,7 @@ func InitPathsWithBase(baseDir string) error {
 	if err != nil {
 		return err
 	}
+	NodeID = config.NodeID
 
 	var dialector gorm.Dialector
 	switch config.Type {

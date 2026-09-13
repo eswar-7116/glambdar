@@ -5,13 +5,14 @@ import "github.com/gin-gonic/gin"
 // WARNING: Every new route added to Gin MUST be mapped here, or it will 403 silently.
 var routeActions = map[string]string{
 	// Function operations
-	"/deploy":        "deploy",
-	"/invoke/:name":  "invoke",
-	"/del/:name":     "delete",
-	"/config/:name":  "config",
-	"/info":          "info",
-	"/info/:name":    "info",
-	"/logs/:name":    "logs",
+	"/deploy":       "deploy",
+	"/invoke/:name": "invoke",
+	"/del/:name":    "delete",
+	"/config/:name": "config",
+	"/info":         "info",
+	"/info/:name":   "info",
+	"/node-id":      "info",
+	"/logs/:name":   "logs",
 
 	// Auth management
 	"/auth/keys":     "auth",

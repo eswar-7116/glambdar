@@ -4,12 +4,14 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
 	"github.com/gin-gonic/gin"
 )
 
 func registerInfoRoutes(router *gin.Engine) {
 	router.GET("/info", infoHandler)
+	router.GET("/node-id", nodeIDHandler)
 	router.GET("/info/:name", functionInfoHandler)
 }
 
@@ -26,6 +28,12 @@ func infoHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"count":     len(deployedFunctions),
 		"functions": deployedFunctions,
+	})
+}
+
+func nodeIDHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"nodeId": config.NodeID,
 	})
 }
 

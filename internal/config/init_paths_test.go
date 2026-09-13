@@ -49,6 +49,10 @@ func TestInitPathsWithBase(t *testing.T) {
 	if DockerClient.WorkerPath != expectedWorkerPath {
 		t.Errorf("expected DockerClient.WorkerPath to be %s, got %s", expectedWorkerPath, DockerClient.WorkerPath)
 	}
+
+	if NodeID == "" {
+		t.Error("expected NodeID to be initialized")
+	}
 }
 
 func TestInitPaths(t *testing.T) {

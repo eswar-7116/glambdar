@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/eswar-7116/glambdar/v3/internal/storage"
+	"github.com/google/uuid"
 )
 
 type DBType int
@@ -45,9 +46,10 @@ func (t *DBType) UnmarshalJSON(data []byte) error {
 }
 
 type Config struct {
-	Type DBType           `json:"db_type"` // postgres, mysql
-	DSN  string           `json:"dsn"`     // Data Source Name
-	S3   storage.S3Config `json:"s3"`      // S3 storage config
+	NodeID string           `json:"node_id"`
+	Type   DBType           `json:"db_type"` // postgres, mysql
+	DSN    string           `json:"dsn"`     // Data Source Name
+	S3     storage.S3Config `json:"s3"`      // S3 storage config
 }
 
 func LoadConfig() (*Config, error) {
@@ -68,6 +70,15 @@ func LoadConfig() (*Config, error) {
 	var config Config
 	if err := json.NewDecoder(file).Decode(&config); err != nil {
 		return nil, err
+	}
+	if config.NodeID == "" {
+		config.NodeID, err = newNodeID()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate node ID: %w", err)
+		}
+		if err := SaveConfig(&config); err != nil {
+			return nil, fmt.Errorf("failed to persist node ID: %w", err)
+		}
 	}
 
 	// Override with environment variables if set
@@ -188,4 +199,13 @@ func SaveConfig(config *Config) error {
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(config)
+}
+
+func newNodeID() (string, error) {
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return "", err
+	}
+
+	return id.String(), nil
 }

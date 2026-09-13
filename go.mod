@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.113.1
 	github.com/containerd/errdefs v1.0.0
 	github.com/gin-gonic/gin v1.11.0
+	github.com/google/uuid v1.6.0
 	github.com/moby/moby/api v1.54.0
 	github.com/moby/moby/client v0.3.0
 	golang.org/x/time v0.12.0

@@ -1,5 +1,7 @@
 package auth
 
+import "slices"
+
 var rolePermissions = map[Role]map[string][]string{
 	RoleAdmin: {
 		"deploy": {"POST"},
@@ -39,10 +41,5 @@ func HasPermission(role Role, action string, method string) bool {
 	if !ok {
 		return false
 	}
-	for _, m := range methods {
-		if m == method {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(methods, method)
 }
