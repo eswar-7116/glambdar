@@ -102,7 +102,7 @@ func TestLoadConfigGeneratesAndPersistsNodeID(t *testing.T) {
 		t.Fatalf("expected NodeID to be UUID-shaped, got %q", first.NodeID)
 	}
 	if first.NodeID[14] != '4' {
-		t.Errorf("expected UUID version 4, got %q", first.NodeID)
+		t.Errorf("expected UUID, got %q", first.NodeID)
 	}
 
 	second, err := LoadConfig()

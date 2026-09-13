@@ -57,6 +57,7 @@ You can also configure via environment variables prefixed with `GLMBD_` or CLI f
 
 ```jsonc
 {
+  "node_id": "", // Generated automatically and persisted for this instance
   "db_type": "postgres", // postgres or mysql
   "dsn": "postgres://user:pass@localhost:5432/glambdar",
   "s3": {
@@ -70,6 +71,12 @@ You can also configure via environment variables prefixed with `GLMBD_` or CLI f
   },
 }
 ```
+
+### Node Identity
+
+Each Glambdar instance has a unique UUID `node_id`. If it is empty or missing when the configuration is first loaded, Glambdar generates a UUID and saves it to `~/.glambdar/config.json`. The ID remains stable across restarts and identifies the instance for distributed coordination.
+
+The current node ID can be queried through the authenticated `/node-id` endpoint.
 
 ### Database
 
@@ -169,7 +176,13 @@ curl -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" http://localhost:8000/info/myfunc
 curl -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" http://localhost:8000/logs/myfunc
 ```
 
-### 8. Delete a function
+### 8. Get the node ID
+
+```bash
+curl -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" http://localhost:8000/node-id
+```
+
+### 9. Delete a function
 
 ```bash
 curl -X DELETE -H "X-API-Key: glmbd_ak_YOUR_KEY_HERE" http://localhost:8000/del/myfunc
@@ -235,6 +248,21 @@ GET /info/:name
 ```
 
 - Returns metadata for a single function
+
+### Get node ID
+
+```
+GET /node-id
+```
+
+- Requires an API key with `info` permission
+- Returns the persistent UUID assigned to this Glambdar instance
+
+```json
+{
+  "nodeId": "<NODE_ID>"
+}
+```
 
 ### Delete a function
 
