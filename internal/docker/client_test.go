@@ -2,12 +2,18 @@ package docker
 
 import (
 	"context"
+	"io"
 	"testing"
 
 	"github.com/moby/moby/client"
 )
 
 type MockDockerAPI struct {
+	client.ContainerAPIClient
+	client.ImageAPIClient
+	client.SystemAPIClient
+	io.Closer
+
 	ContainerCreateFunc func(ctx context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error)
 	ContainerStartFunc  func(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error)
 	ContainerKillFunc   func(ctx context.Context, containerID string, options client.ContainerKillOptions) (client.ContainerKillResult, error)
