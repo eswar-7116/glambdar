@@ -152,10 +152,7 @@ func (pm *PoolManager) prewarm(ctx context.Context, d *docker.Docker, functionsD
 		idleNow := len(p.Idle)
 		idleCap := cap(p.Idle)
 
-		desired := int(predicted / 5)
-		if desired < 1 {
-			desired = 1
-		}
+		desired := max(int(predicted/5), 1)
 
 		toSpawn := desired - idleNow
 		for i := 0; i < toSpawn && idleNow+i < idleCap; i++ {

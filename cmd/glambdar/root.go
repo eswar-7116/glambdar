@@ -47,7 +47,7 @@ func Init() {
 	// Set the required file paths
 	if err := config.InitPaths(); err != nil {
 		fmt.Println(err.Error())
-		fmt.Println("Please make sure you defined GLAMBDAR_DIR in the environment.")
+		fmt.Println("Failed to initialize paths.")
 		os.Exit(1)
 	}
 
