@@ -3,6 +3,8 @@ package docker
 import (
 	"context"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/moby/moby/client"
@@ -15,6 +17,7 @@ type MockDockerAPI struct {
 	io.Closer
 
 	ContainerCreateFunc func(ctx context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error)
+	CopyToContainerFunc func(ctx context.Context, containerID string, options client.CopyToContainerOptions) (client.CopyToContainerResult, error)
 	ContainerStartFunc  func(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error)
 	ContainerKillFunc   func(ctx context.Context, containerID string, options client.ContainerKillOptions) (client.ContainerKillResult, error)
 	ContainerRemoveFunc func(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error)
@@ -42,6 +45,14 @@ func (m *MockDockerAPI) ContainerCreate(ctx context.Context, options client.Cont
 	return m.ContainerCreateFunc(ctx, options)
 }
 
+func (m *MockDockerAPI) CopyToContainer(ctx context.Context, containerID string, options client.CopyToContainerOptions) (client.CopyToContainerResult, error) {
+	if m.CopyToContainerFunc != nil {
+		return m.CopyToContainerFunc(ctx, containerID, options)
+	}
+
+	return client.CopyToContainerResult{}, nil
+}
+
 func (m *MockDockerAPI) ContainerStart(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error) {
 	return m.ContainerStartFunc(ctx, containerID, options)
 }
@@ -66,17 +77,36 @@ func (m *MockDockerAPI) Close() error {
 }
 
 func TestDocker_ContainerCreate(t *testing.T) {
+	funcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(funcDir, "index.js"), []byte("console.log('hello')"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	workerPath := filepath.Join(t.TempDir(), "worker.js")
+	if err := os.WriteFile(workerPath, []byte("console.log('worker')"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
 	mock := &MockDockerAPI{
 		ContainerCreateFunc: func(ctx context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error) {
 			return client.ContainerCreateResult{ID: "test-id"}, nil
 		},
+		CopyToContainerFunc: func(ctx context.Context, containerID string, options client.CopyToContainerOptions) (client.CopyToContainerResult, error) {
+			if containerID != "test-id" {
+				t.Errorf("expected id test-id, got %s", containerID)
+			}
+
+			_, err := io.Copy(io.Discard, options.Content)
+			return client.CopyToContainerResult{}, err
+		},
 	}
 
 	d := &Docker{
-		client: mock,
+		client:     mock,
+		WorkerPath: workerPath,
 	}
 
-	id, err := d.ContainerCreate(context.Background(), "/some/dir", "/tmp/glambdar-test/")
+	id, err := d.ContainerCreate(context.Background(), funcDir, "/tmp/glambdar-test/")
 	if err != nil {
 		t.Fatalf("ContainerCreate failed: %v", err)
 	}

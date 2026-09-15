@@ -99,18 +99,8 @@ func (d *Docker) ContainerCreate(ctx context.Context, funcDir, socketPath string
 			Mounts: []mount.Mount{
 				{
 					Type:   mount.TypeBind,
-					Source: funcDir,
-					Target: "/function",
-				},
-				{
-					Type:   mount.TypeBind,
 					Source: socketPath,
 					Target: "/glambdar-sock/",
-				},
-				{
-					Type:   mount.TypeBind,
-					Source: d.WorkerPath,
-					Target: "/glambdar/worker.js",
 				},
 			},
 			Resources: container.Resources{
@@ -121,6 +111,36 @@ func (d *Docker) ContainerCreate(ctx context.Context, funcDir, socketPath string
 	})
 	if err != nil {
 		return "", err
+	}
+
+	// Copy the extracted function into the container.
+	if err := copyDirToContainer(
+		ctx,
+		cli,
+		container.ID,
+		funcDir,
+		"/function",
+	); err != nil {
+		_, _ = cli.ContainerRemove(ctx, container.ID, client.ContainerRemoveOptions{
+			Force: true,
+		})
+
+		return "", fmt.Errorf("failed to copy function into container: %w", err)
+	}
+
+	// Copy the worker script into the container.
+	if err := copyFileToContainer(
+		ctx,
+		cli,
+		container.ID,
+		d.WorkerPath,
+		"/glambdar/worker.js",
+	); err != nil {
+		_, _ = cli.ContainerRemove(ctx, container.ID, client.ContainerRemoveOptions{
+			Force: true,
+		})
+
+		return "", fmt.Errorf("failed to copy worker into container: %w", err)
 	}
 
 	return container.ID, nil
