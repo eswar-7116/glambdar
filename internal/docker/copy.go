@@ -40,7 +40,11 @@ func copyFileToContainer(
 			return
 		}
 
-		header.Name = filepath.Base(dstFile)
+		name := dstFile
+		if len(name) > 0 && name[0] == '/' {
+			name = name[1:]
+		}
+		header.Name = name
 
 		if err := tw.WriteHeader(header); err != nil {
 			_ = pw.CloseWithError(err)
@@ -81,7 +85,7 @@ func copyFileToContainer(
 		ctx,
 		containerID,
 		client.CopyToContainerOptions{
-			DestinationPath: "/glambdar",
+			DestinationPath: "/",
 			Content:         pr,
 		},
 	)
@@ -102,6 +106,14 @@ func copyDirToContainer(
 	dstDir string,
 ) error {
 	pr, pw := io.Pipe()
+
+	baseDst := dstDir
+	if len(baseDst) > 0 && baseDst[0] == '/' {
+		baseDst = baseDst[1:]
+	}
+	if len(baseDst) > 0 && baseDst[len(baseDst)-1] != '/' {
+		baseDst += "/"
+	}
 
 	errCh := make(chan error, 1)
 
@@ -138,8 +150,7 @@ func copyDirToContainer(
 					return err
 				}
 
-				// TAR paths must use '/' regardless of OS.
-				header.Name = filepath.ToSlash(relPath)
+				header.Name = baseDst + filepath.ToSlash(relPath)
 
 				if err := tw.WriteHeader(header); err != nil {
 					return err
@@ -184,7 +195,7 @@ func copyDirToContainer(
 		ctx,
 		containerID,
 		client.CopyToContainerOptions{
-			DestinationPath: dstDir,
+			DestinationPath: "/",
 			Content:         pr,
 		},
 	)
