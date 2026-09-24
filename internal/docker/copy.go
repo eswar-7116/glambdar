@@ -44,6 +44,8 @@ func copyFileToContainer(
 		if len(name) > 0 && name[0] == '/' {
 			name = name[1:]
 		}
+		header.Uid = 1000
+		header.Gid = 1000
 		header.Name = name
 
 		if err := tw.WriteHeader(header); err != nil {
@@ -137,7 +139,6 @@ func copyDirToContainer(
 				}
 
 				var linkName string
-
 				if info.Mode()&os.ModeSymlink != 0 {
 					linkName, err = os.Readlink(path)
 					if err != nil {
@@ -150,6 +151,8 @@ func copyDirToContainer(
 					return err
 				}
 
+				header.Uid = 1000
+				header.Gid = 1000
 				header.Name = baseDst + filepath.ToSlash(relPath)
 
 				if err := tw.WriteHeader(header); err != nil {

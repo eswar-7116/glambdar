@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 	"sync"
 
 	"github.com/containerd/errdefs"
@@ -89,23 +90,35 @@ func (d *Docker) ContainerCreate(ctx context.Context, funcDir, socketPath string
 		}
 	}
 
+	var pidsLimit int64 = 50
 	container, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Image: image,
 		Config: &container.Config{
 			Hostname: "glambdar",
-			Cmd:      []string{"bun", "/glambdar/worker.js", "/function"},
+			Cmd:      []string{"bun", "/glambdar/" + filepath.Base(d.WorkerPath), "/function"},
+			User:     "1000:1000", // Run as non-root
 		},
 		HostConfig: &container.HostConfig{
+			Runtime: "runsc",
+			Annotations: map[string]string{
+				"dev.gvisor.flag.host-uds": "create",
+			},
+			SecurityOpt: []string{
+				"no-new-privileges",
+			},
+			CapDrop: []string{"ALL"},
 			Mounts: []mount.Mount{
 				{
+					// Socket directory for UDS communication with the host
 					Type:   mount.TypeBind,
 					Source: socketPath,
 					Target: "/glambdar-sock/",
 				},
 			},
 			Resources: container.Resources{
-				Memory:   128 * 1024 * 1024, // 128m in bytes
-				NanoCPUs: 500_000_000,       // 0.5 CPUs in nanocpus
+				Memory:    128 * 1024 * 1024, // 128m in bytes
+				NanoCPUs:  500_000_000,       // 0.5 CPUs in nanocpus
+				PidsLimit: &pidsLimit,
 			},
 		},
 	})
@@ -134,7 +147,7 @@ func (d *Docker) ContainerCreate(ctx context.Context, funcDir, socketPath string
 		cli,
 		container.ID,
 		d.WorkerPath,
-		"/glambdar/worker.js",
+		"/glambdar/"+filepath.Base(d.WorkerPath),
 	); err != nil {
 		_, _ = cli.ContainerRemove(ctx, container.ID, client.ContainerRemoveOptions{
 			Force: true,

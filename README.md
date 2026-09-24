@@ -33,6 +33,7 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 ## Requirements
 
 - **Docker**
+- **gVisor (`runsc`)** (Container runtime sandbox for secure container isolation)
 - **Unix-based Environment** (Linux/macOS)
   > UDS is used for IPC, so Windows is not supported natively
 - **Go** (for building the runtime)
@@ -43,7 +44,7 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 
 ## Environment Setup
 
-- Glambdar relies on Docker for function isolation. Ensure the Docker daemon is running before starting the runtime.
+- Glambdar relies on Docker and gVisor (`runsc`) for function isolation. Ensure the Docker daemon is running and `runsc` is registered as a Docker runtime before starting the runtime. Follow the [official gVisor installation guide](https://gvisor.dev/docs/user_guide/install/) to install `runsc` and configure Docker.
 
 - Glambdar will automatically create a `.glambdar` directory in your user home directory for local function caches, config, and runtime metadata.
 
@@ -52,8 +53,8 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 ## Configuration
 
 > **Configuration precedence:** CLI flags > Environment variables (`GLMBD_*`) > `config.json` values.
-Glambdar configuration can be customized by creating a `~/.glambdar/config.json` file.
-You can also configure via environment variables prefixed with `GLMBD_` or CLI flags (e.g., `--db_type`, `--dsn`). Run `glambdar --help` to see all available flags.
+> Glambdar configuration can be customized by creating a `~/.glambdar/config.json` file.
+> You can also configure via environment variables prefixed with `GLMBD_` or CLI flags (e.g., `--db_type`, `--dsn`). Run `glambdar --help` to see all available flags.
 
 ```jsonc
 {

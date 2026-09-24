@@ -173,7 +173,10 @@ func spawnIdle(ctx context.Context, d *docker.Docker, functionsDir, funcName str
 	if err != nil {
 		return
 	}
-	os.Chmod(socketDir, 0777)
+	if err := os.Chmod(socketDir, 0777); err != nil {
+		os.RemoveAll(socketDir)
+		return
+	}
 
 	containerID, err := d.ContainerCreate(ctx, funcDir, socketDir)
 	if err != nil {

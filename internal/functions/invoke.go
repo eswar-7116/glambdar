@@ -95,7 +95,10 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 		if err != nil {
 			return InvokeResponse{}, fmt.Errorf("failed to create socket dir: %w", err)
 		}
-		os.Chmod(socketDir, 0777)
+		if err := os.Chmod(socketDir, 0777); err != nil {
+			os.RemoveAll(socketDir)
+			return InvokeResponse{}, fmt.Errorf("failed to chmod socket dir: %w", err)
+		}
 
 		containerID, err := d.ContainerCreate(ctx, funcDir, socketDir)
 		if err != nil {
