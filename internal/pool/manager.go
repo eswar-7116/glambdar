@@ -18,6 +18,27 @@ type PoolManager struct {
 	pools sync.Map // funcName -> *ContainerPool
 }
 
+type PoolStatus struct {
+	IdleCount      int32
+	ActiveCount    int32
+	MaxConcurrency int32
+}
+
+func (pm *PoolManager) GetPoolStatuses() map[string]PoolStatus {
+	statuses := make(map[string]PoolStatus)
+	pm.pools.Range(func(key, val any) bool {
+		funcName := key.(string)
+		p := val.(*ContainerPool)
+		statuses[funcName] = PoolStatus{
+			IdleCount:      int32(len(p.Idle)),
+			ActiveCount:    0,
+			MaxConcurrency: p.MaxConcurrency,
+		}
+		return true
+	})
+	return statuses
+}
+
 func (pm *PoolManager) GetOrCreate(funcName string, rateLimit int, maxConcurrency int32) (*ContainerPool, error) {
 	if val, ok := pm.pools.Load(funcName); ok {
 		return val.(*ContainerPool), nil

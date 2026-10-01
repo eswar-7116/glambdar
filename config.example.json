@@ -1,5 +1,8 @@
 {
     "node_id": "",
+    "mode": "<standalone|gateway|agent>",
+    "grpc_port": "9090",
+    "redis_addr": "<YOUR_REDIS_ADDR (e.g. localhost:6379)>",
     "db_type": "<postgres|mysql>",
     "dsn": "<DSN>",
     "s3": {

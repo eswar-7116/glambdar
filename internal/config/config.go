@@ -2,9 +2,7 @@ package config
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -46,15 +44,34 @@ func (t *DBType) UnmarshalJSON(data []byte) error {
 }
 
 type Config struct {
-	NodeID string           `json:"node_id"`
-	Type   DBType           `json:"db_type"` // postgres, mysql
-	DSN    string           `json:"dsn"`     // Data Source Name
-	S3     storage.S3Config `json:"s3"`      // S3 storage config
+	NodeID    string           `json:"node_id"`
+	Mode      string           `json:"mode"`       // "standalone", "gateway", "agent"
+	GRPCPort  string           `json:"grpc_port"`  // agent gRPC port
+	RedisAddr string           `json:"redis_addr"` // Redis address for cluster coordination
+	Type      DBType           `json:"db_type"`    // postgres, mysql
+	DSN       string           `json:"dsn"`        // Data Source Name
+	S3        storage.S3Config `json:"s3"`         // S3 storage config
 }
+
+type CLIOverrides struct {
+	DBType            string
+	DSN               string
+	RedisAddr         string
+	NodeID            string
+	GRPCPort          string
+	S3Endpoint        string
+	S3Region          string
+	S3Bucket          string
+	S3AccessKeyID     string
+	S3SecretAccessKey string
+	S3SessionToken    string
+	S3ForcePathStyle  *bool
+}
+
+var Overrides CLIOverrides
 
 func LoadConfig() (*Config, error) {
 	configPath := filepath.Join(ConfigDir, "config.json")
-
 	file, err := os.Open(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -95,6 +112,9 @@ func LoadConfig() (*Config, error) {
 	if v := os.Getenv("GLMBD_DSN"); v != "" {
 		config.DSN = v
 	}
+	if v := os.Getenv("GLMBD_REDIS_ADDR"); v != "" {
+		config.RedisAddr = v
+	}
 
 	// S3 overrides
 	if v := os.Getenv("GLMBD_S3_ENDPOINT"); v != "" {
@@ -122,69 +142,50 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Override with CLI flags (highest precedence)
-	fs := flag.NewFlagSet("config", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	var (
-		flagDBType            string
-		flagDSN               string
-		flagS3Endpoint        string
-		flagS3Region          string
-		flagS3Bucket          string
-		flagS3AccessKeyID     string
-		flagS3SecretAccessKey string
-		flagS3SessionToken    string
-		flagS3ForcePathStyle  string
-	)
-	fs.StringVar(&flagDBType, "db_type", "", "Database type (postgres, mysql)")
-	fs.StringVar(&flagDSN, "dsn", "", "Database DSN")
-	fs.StringVar(&flagS3Endpoint, "s3_endpoint", "", "S3 endpoint")
-	fs.StringVar(&flagS3Region, "s3_region", "", "S3 region")
-	fs.StringVar(&flagS3Bucket, "s3_bucket", "", "S3 bucket")
-	fs.StringVar(&flagS3AccessKeyID, "s3_access_key_id", "", "S3 access key ID")
-	fs.StringVar(&flagS3SecretAccessKey, "s3_secret_access_key", "", "S3 secret access key")
-	fs.StringVar(&flagS3SessionToken, "s3_session_token", "", "S3 session token")
-	fs.StringVar(&flagS3ForcePathStyle, "s3_force_path_style", "", "S3 force path style (true/false)")
-	if err := fs.Parse(os.Args[1:]); err != nil {
-		// Ignore errors from unknown flags
-	}
-
-	if flagDBType != "" {
-		switch flagDBType {
+	// Read from overrides
+	if Overrides.DBType != "" {
+		switch Overrides.DBType {
 		case "postgres":
 			config.Type = DBTypePostgres
 		case "mysql":
 			config.Type = DBTypeMySQL
 		default:
-			return nil, fmt.Errorf("unsupported --db_type %q: must be \"postgres\" or \"mysql\"", flagDBType)
+			return nil, fmt.Errorf("unsupported --db-type %q: must be \"postgres\" or \"mysql\"", Overrides.DBType)
 		}
 	}
-	if flagDSN != "" {
-		config.DSN = flagDSN
+	if Overrides.DSN != "" {
+		config.DSN = Overrides.DSN
 	}
-	if flagS3Endpoint != "" {
-		config.S3.Endpoint = flagS3Endpoint
+	if Overrides.RedisAddr != "" {
+		config.RedisAddr = Overrides.RedisAddr
 	}
-	if flagS3Region != "" {
-		config.S3.Region = flagS3Region
+	if Overrides.NodeID != "" {
+		config.NodeID = Overrides.NodeID
 	}
-	if flagS3Bucket != "" {
-		config.S3.Bucket = flagS3Bucket
+	if Overrides.GRPCPort != "" {
+		config.GRPCPort = Overrides.GRPCPort
 	}
-	if flagS3AccessKeyID != "" {
-		config.S3.AccessKeyID = flagS3AccessKeyID
+	if Overrides.S3Endpoint != "" {
+		config.S3.Endpoint = Overrides.S3Endpoint
 	}
-	if flagS3SecretAccessKey != "" {
-		config.S3.SecretAccessKey = flagS3SecretAccessKey
+	if Overrides.S3Region != "" {
+		config.S3.Region = Overrides.S3Region
 	}
-	if flagS3SessionToken != "" {
-		config.S3.SessionToken = flagS3SessionToken
+	if Overrides.S3Bucket != "" {
+		config.S3.Bucket = Overrides.S3Bucket
 	}
-	if flagS3ForcePathStyle != "" {
-		if b, err := strconv.ParseBool(flagS3ForcePathStyle); err == nil {
-			config.S3.ForcePathStyle = b
-		}
+	if Overrides.S3AccessKeyID != "" {
+		config.S3.AccessKeyID = Overrides.S3AccessKeyID
 	}
-
+	if Overrides.S3SecretAccessKey != "" {
+		config.S3.SecretAccessKey = Overrides.S3SecretAccessKey
+	}
+	if Overrides.S3SessionToken != "" {
+		config.S3.SessionToken = Overrides.S3SessionToken
+	}
+	if Overrides.S3ForcePathStyle != nil {
+		config.S3.ForcePathStyle = *Overrides.S3ForcePathStyle
+	}
 	return &config, nil
 }
 

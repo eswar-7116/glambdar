@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/eswar-7116/glambdar/v3/cmd/glambdar"
-	"github.com/eswar-7116/glambdar/v3/internal/auth"
 )
 
 //go:embed worker/glambdar-worker.js
@@ -33,28 +32,10 @@ func init() {
 		fmt.Fprintln(os.Stderr, "Error writing worker script:", err)
 	}
 	workerScript = nil
-
-	glambdar.Init()
 }
 
 func main() {
-	if len(os.Args) > 1 {
-		arg := os.Args[1]
-		if arg == "--version" || arg == "-v" || arg == "version" {
-			fmt.Printf("glambdar version %s\n", glambdar.VERSION)
-			return
-		}
-		if arg == "reset-admin-key" {
-			if err := auth.ResetRootKey(); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to reset admin key: %v\n", err)
-				os.Exit(1)
-			}
-			return
-		}
-		if arg == "--help" || arg == "-h" || arg == "help" {
-			printHelp()
-			return
-		}
+	if err := glambdar.Execute(); err != nil {
+		os.Exit(1)
 	}
-	glambdar.Start()
 }

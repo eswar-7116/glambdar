@@ -35,41 +35,50 @@ type InvokeResponse struct {
 	ColdStart  bool              `json:"coldStart"`
 }
 
-func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRequest) (InvokeResponse, error) {
+func EnsureCached(ctx context.Context, funcName string) error {
 	funcDir, err := filepath.Abs(filepath.Join(config.FunctionsDir, funcName))
 	if err != nil {
-		return InvokeResponse{}, err
+		return err
 	}
 
-	// Check if the function's directory exists
 	info, err := os.Stat(funcDir)
 	if os.IsNotExist(err) && config.StorageClient != nil {
 		objectKey := funcName + ".zip"
 		readerCloser, downloadErr := config.StorageClient.Download(ctx, objectKey)
 		if downloadErr != nil {
-			return InvokeResponse{}, fmt.Errorf("failed to download function zip from storage: %w", downloadErr)
+			return fmt.Errorf("failed to download function zip from storage: %w", downloadErr)
 		}
 		defer readerCloser.Close()
 
-		// Read into buffer to extract
 		buf := new(bytes.Buffer)
 		if _, copyErr := io.Copy(buf, readerCloser); copyErr != nil {
-			return InvokeResponse{}, fmt.Errorf("failed to read downloaded function zip: %w", copyErr)
+			return fmt.Errorf("failed to read downloaded function zip: %w", copyErr)
 		}
 
 		bytesReader := bytes.NewReader(buf.Bytes())
 		if _, extractErr := util.ExtractZIP(bytesReader, int64(buf.Len()), funcName); extractErr != nil {
-			return InvokeResponse{}, fmt.Errorf("failed to extract downloaded function zip: %w", extractErr)
+			return fmt.Errorf("failed to extract downloaded function zip: %w", extractErr)
 		}
 
 		info, err = os.Stat(funcDir)
 	}
 
 	if err != nil {
-		return InvokeResponse{}, err
+		return err
 	}
 	if !info.IsDir() {
-		return InvokeResponse{}, fmt.Errorf("%s is not a directory", funcDir)
+		return fmt.Errorf("%s is not a directory", funcDir)
+	}
+	return nil
+}
+
+func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRequest) (InvokeResponse, error) {
+	if err := EnsureCached(ctx, funcName); err != nil {
+		return InvokeResponse{}, err
+	}
+	funcDir, err := filepath.Abs(filepath.Join(config.FunctionsDir, funcName))
+	if err != nil {
+		return InvokeResponse{}, err
 	}
 
 	// Load metadata

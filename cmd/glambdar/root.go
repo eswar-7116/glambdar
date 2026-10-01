@@ -16,6 +16,7 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/auth"
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
+	"github.com/spf13/cobra"
 )
 
 var VERSION = getVersion()
@@ -42,6 +43,80 @@ func getVersion() string {
 }
 
 const PORT = "8000"
+
+var (
+	flagDBType            string
+	flagDSN               string
+	flagS3Endpoint        string
+	flagS3Region          string
+	flagS3Bucket          string
+	flagS3AccessKeyID     string
+	flagS3SecretAccessKey string
+	flagS3SessionToken    string
+	flagS3ForcePathStyle  bool
+)
+
+var RootCmd = &cobra.Command{
+	Use:     "glambdar [command]",
+	Short:   "Glambdar serverless execution engine",
+	Version: VERSION,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		applyPersistentFlags(cmd)
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		Init()
+		Start()
+	},
+}
+
+func applyPersistentFlags(cmd *cobra.Command) {
+	if cmd.Flags().Changed("db-type") {
+		config.Overrides.DBType = flagDBType
+	}
+	if cmd.Flags().Changed("dsn") {
+		config.Overrides.DSN = flagDSN
+	}
+	if cmd.Flags().Changed("s3-endpoint") {
+		config.Overrides.S3Endpoint = flagS3Endpoint
+	}
+	if cmd.Flags().Changed("s3-region") {
+		config.Overrides.S3Region = flagS3Region
+	}
+	if cmd.Flags().Changed("s3-bucket") {
+		config.Overrides.S3Bucket = flagS3Bucket
+	}
+	if cmd.Flags().Changed("s3-access-key-id") {
+		config.Overrides.S3AccessKeyID = flagS3AccessKeyID
+	}
+	if cmd.Flags().Changed("s3-secret-access-key") {
+		config.Overrides.S3SecretAccessKey = flagS3SecretAccessKey
+	}
+	if cmd.Flags().Changed("s3-session-token") {
+		config.Overrides.S3SessionToken = flagS3SessionToken
+	}
+	if cmd.Flags().Changed("s3-force-path-style") {
+		config.Overrides.S3ForcePathStyle = &flagS3ForcePathStyle
+	}
+}
+
+func init() {
+	RootCmd.PersistentFlags().StringVar(&flagDBType, "db-type", "", "Database type (postgres, mysql)")
+	RootCmd.PersistentFlags().StringVar(&flagDSN, "dsn", "", "Database DSN")
+	RootCmd.PersistentFlags().StringVar(&flagS3Endpoint, "s3-endpoint", "", "S3 endpoint URL")
+	RootCmd.PersistentFlags().StringVar(&flagS3Region, "s3-region", "", "S3 region")
+	RootCmd.PersistentFlags().StringVar(&flagS3Bucket, "s3-bucket", "", "S3 bucket name")
+	RootCmd.PersistentFlags().StringVar(&flagS3AccessKeyID, "s3-access-key-id", "", "S3 access key ID")
+	RootCmd.PersistentFlags().StringVar(&flagS3SecretAccessKey, "s3-secret-access-key", "", "S3 secret access key")
+	RootCmd.PersistentFlags().StringVar(&flagS3SessionToken, "s3-session-token", "", "S3 session token")
+	RootCmd.PersistentFlags().BoolVar(&flagS3ForcePathStyle, "s3-force-path-style", false, "Force path style for S3")
+
+	RootCmd.AddCommand(agentCmd)
+	RootCmd.AddCommand(auth.ResetAdminKeyCmd)
+}
+
+func Execute() error {
+	return RootCmd.Execute()
+}
 
 func Init() {
 	// Set the required file paths

@@ -25,53 +25,93 @@ var (
 )
 
 func InitPaths() error {
+	return withHomeDir(InitPathsWithBase)
+}
+
+func InitAgentPaths() error {
+	return withHomeDir(InitAgentPathsWithBase)
+}
+
+func withHomeDir(initFn func(string) error) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
-	return InitPathsWithBase(filepath.Join(home, ".glambdar"))
+	return initFn(filepath.Join(home, ".glambdar"))
 }
 
-func InitPathsWithBase(baseDir string) error {
+func initCore(baseDir string) (*Config, error) {
 	ConfigDir = baseDir
 	FunctionsDir = filepath.Join(ConfigDir, "functions")
 	WorkerPath = filepath.Join(ConfigDir, "worker", "glambdar-worker.js")
-
 	DockerClient.WorkerPath = WorkerPath
 
-	err := os.MkdirAll(FunctionsDir, 0755)
+	if err := os.MkdirAll(FunctionsDir, 0755); err != nil {
+		return nil, err
+	}
+
+	cfg, err := LoadConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
+	NodeID = cfg.NodeID
 
-	config, err := LoadConfig()
-	if err != nil {
-		return err
-	}
-	NodeID = config.NodeID
-
-	var dialector gorm.Dialector
-	switch config.Type {
-	case DBTypePostgres:
-		dialector = postgres.Open(config.DSN)
-	case DBTypeMySQL:
-		dialector = mysql.Open(config.DSN)
-	default:
-		return fmt.Errorf("unsupported database type: only \"postgres\" and \"mysql\" are supported")
-	}
-
-	DB, err = gorm.Open(dialector, &gorm.Config{})
-	if err != nil {
-		return err
-	}
-
-	if config.S3.Bucket != "" || config.S3.Endpoint != "" {
-		s3Store, err := storage.NewS3Storage(config.S3)
+	if cfg.S3.Bucket != "" || cfg.S3.Endpoint != "" {
+		s3Store, err := storage.NewS3Storage(cfg.S3)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		StorageClient = s3Store
 	}
 
+	return cfg, nil
+}
+
+func connectDB(cfg *Config) (*gorm.DB, error) {
+	var dialector gorm.Dialector
+	switch cfg.Type {
+	case DBTypePostgres:
+		dialector = postgres.Open(cfg.DSN)
+	case DBTypeMySQL:
+		dialector = mysql.Open(cfg.DSN)
+	default:
+		return nil, fmt.Errorf("unsupported database type: only \"postgres\" and \"mysql\" are supported")
+	}
+
+	return gorm.Open(dialector, &gorm.Config{})
+}
+
+func InitPathsWithBase(baseDir string) error {
+	cfg, err := initCore(baseDir)
+	if err != nil {
+		return err
+	}
+
+	db, err := connectDB(cfg)
+	if err != nil {
+		return err
+	}
+	DB = db
+	return nil
+}
+
+func InitAgentPathsWithBase(baseDir string) error {
+	cfg, err := initCore(baseDir)
+	if err != nil {
+		// For agent, allow running with defaults if config file is not present
+		ConfigDir = baseDir
+		FunctionsDir = filepath.Join(ConfigDir, "functions")
+		WorkerPath = filepath.Join(ConfigDir, "worker", "glambdar-worker.js")
+		DockerClient.WorkerPath = WorkerPath
+		_ = os.MkdirAll(FunctionsDir, 0755)
+		return nil
+	}
+
+	// Connect to DB if DSN is configured, but don't fail if absent
+	if cfg.DSN != "" {
+		if db, err := connectDB(cfg); err == nil {
+			DB = db
+		}
+	}
 	return nil
 }

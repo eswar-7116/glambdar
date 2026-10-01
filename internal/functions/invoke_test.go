@@ -2,6 +2,7 @@ package functions_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -147,5 +148,71 @@ func TestInvoke_Methods(t *testing.T) {
 				t.Errorf("expected method %s, got %s", method, body["method"])
 			}
 		})
+	}
+}
+
+func TestEnsureCached_AlreadyLocal(t *testing.T) {
+	tmp := t.TempDir()
+	config.FunctionsDir = tmp
+
+	// Create the function directory locally
+	funcDir := filepath.Join(tmp, "myfunc")
+	if err := os.MkdirAll(funcDir, 0755); err != nil {
+		t.Fatalf("failed to create func dir: %v", err)
+	}
+
+	// EnsureCached should return nil immediately
+	config.StorageClient = nil
+	if err := functions.EnsureCached(context.Background(), "myfunc"); err != nil {
+		t.Errorf("expected nil error for already-cached function, got: %v", err)
+	}
+}
+
+func TestEnsureCached_MissingNoStorage(t *testing.T) {
+	tmp := t.TempDir()
+	config.FunctionsDir = tmp
+	config.StorageClient = nil
+
+	err := functions.EnsureCached(context.Background(), "missing")
+	if err == nil {
+		t.Error("expected error when function missing and no storage configured")
+	}
+}
+
+func TestEnsureCached_DownloadsFromStorage(t *testing.T) {
+	tmp := t.TempDir()
+	config.FunctionsDir = tmp
+
+	// Seed mock storage with valid.zip
+	zipBytes, err := os.ReadFile(validZipFile)
+	if err != nil {
+		t.Fatalf("failed to read test zip: %v", err)
+	}
+	mock := storage.NewMockStorage()
+	if err := mock.Upload(context.Background(), "myfunc.zip", bytes.NewReader(zipBytes)); err != nil {
+		t.Fatalf("failed to upload to mock storage: %v", err)
+	}
+	config.StorageClient = mock
+
+	if err := functions.EnsureCached(context.Background(), "myfunc"); err != nil {
+		t.Errorf("expected EnsureCached to download and extract, got: %v", err)
+	}
+
+	// The function directory must exist locally
+	if _, err := os.Stat(filepath.Join(tmp, "myfunc")); os.IsNotExist(err) {
+		t.Error("expected function directory to be created after download")
+	}
+}
+
+func TestEnsureCached_StorageDownloadFails(t *testing.T) {
+	tmp := t.TempDir()
+	config.FunctionsDir = tmp
+
+	// Mock storage has no file for this key
+	config.StorageClient = storage.NewMockStorage()
+
+	err := functions.EnsureCached(context.Background(), "nosuchfunc")
+	if err == nil {
+		t.Error("expected error when storage download fails")
 	}
 }
