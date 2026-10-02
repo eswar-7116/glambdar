@@ -111,6 +111,7 @@ func init() {
 	RootCmd.PersistentFlags().BoolVar(&flagS3ForcePathStyle, "s3-force-path-style", false, "Force path style for S3")
 
 	RootCmd.AddCommand(agentCmd)
+	RootCmd.AddCommand(controllerCmd)
 	RootCmd.AddCommand(auth.ResetAdminKeyCmd)
 }
 

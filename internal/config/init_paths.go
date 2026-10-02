@@ -115,3 +115,24 @@ func InitAgentPathsWithBase(baseDir string) error {
 	}
 	return nil
 }
+
+func InitControllerPaths() error {
+	return withHomeDir(InitControllerPathsWithBase)
+}
+
+func InitControllerPathsWithBase(baseDir string) error {
+	cfg, err := initCore(baseDir)
+	if err != nil {
+		return err
+	}
+
+	// Controller must have a DB connection
+	db, err := connectDB(cfg)
+	if err != nil {
+		return err
+	}
+	DB = db
+
+	// Controller doesn't need DockerClient or PoolManager
+	return nil
+}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
+	pb "github.com/eswar-7116/glambdar/v3/proto"
 	"github.com/gin-gonic/gin"
 )
 
@@ -96,8 +98,34 @@ func deployHandler(c *gin.Context) {
 		return
 	}
 
+	// Fan out PreloadFunction to all healthy agents in controller mode
+	if controllerMode && grpcPool != nil && stateProvider != nil {
+		go fanOutPreload(funcName)
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"function": funcName,
 		"status":   "deployed",
 	})
+}
+
+// Sends PreloadFunction RPCs to all healthy agent nodes
+func fanOutPreload(funcName string) {
+	ctx := context.Background()
+	nodes, err := stateProvider.GetHealthyNodes(ctx)
+	if err != nil {
+		log.Printf("WARNING: failed to get healthy nodes for preload fan-out: %v", err)
+		return
+	}
+
+	for _, node := range nodes {
+		client, err := grpcPool.GetClient(node.Address)
+		if err != nil {
+			log.Printf("WARNING: failed to connect to agent %s for preload: %v", node.Address, err)
+			continue
+		}
+		if _, err := client.PreloadFunction(ctx, &pb.PreloadRequest{FuncName: funcName}); err != nil {
+			log.Printf("WARNING: failed to preload function %s on agent %s: %v", funcName, node.Address, err)
+		}
+	}
 }

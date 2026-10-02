@@ -45,6 +45,7 @@ func (t *DBType) UnmarshalJSON(data []byte) error {
 
 type Config struct {
 	NodeID    string           `json:"node_id"`
+	HTTPPort  string           `json:"http_port"`  // controller HTTP port (default: 8000)
 	GRPCPort  string           `json:"grpc_port"`  // agent gRPC port
 	RedisAddr string           `json:"redis_addr"` // Redis address for cluster coordination
 	Type      DBType           `json:"db_type"`    // postgres, mysql
@@ -57,6 +58,7 @@ type CLIOverrides struct {
 	DSN               string
 	RedisAddr         string
 	NodeID            string
+	HTTPPort          string
 	GRPCPort          string
 	S3Endpoint        string
 	S3Region          string
@@ -114,6 +116,12 @@ func LoadConfig() (*Config, error) {
 	if v := os.Getenv("GLMBD_REDIS_ADDR"); v != "" {
 		config.RedisAddr = v
 	}
+	if v := os.Getenv("GLMBD_HTTP_PORT"); v != "" {
+		config.HTTPPort = v
+	}
+	if v := os.Getenv("GLMBD_GRPC_PORT"); v != "" {
+		config.GRPCPort = v
+	}
 
 	// S3 overrides
 	if v := os.Getenv("GLMBD_S3_ENDPOINT"); v != "" {
@@ -160,6 +168,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if Overrides.NodeID != "" {
 		config.NodeID = Overrides.NodeID
+	}
+	if Overrides.HTTPPort != "" {
+		config.HTTPPort = Overrides.HTTPPort
 	}
 	if Overrides.GRPCPort != "" {
 		config.GRPCPort = Overrides.GRPCPort

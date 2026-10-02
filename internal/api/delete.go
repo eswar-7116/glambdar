@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
+	pb "github.com/eswar-7116/glambdar/v3/proto"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -66,10 +68,38 @@ func deleteFuncHandler(c *gin.Context) {
 		// We don't return here because files and metadata are already gone
 	}
 
-	// Clean up container pool
-	config.PoolManager.DeletePool(c, config.DockerClient, name)
+	// Clean up container pool (in standalone mode)
+	if !controllerMode {
+		config.PoolManager.DeletePool(c, config.DockerClient, name)
+	}
+
+	// Fan out EvictFunction to all healthy agents in controller mode
+	if controllerMode && grpcPool != nil && stateProvider != nil {
+		go fanOutEvict(name)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"deleted": name,
 	})
+}
+
+// Sends EvictFunction RPCs to all healthy agent nodes
+func fanOutEvict(funcName string) {
+	ctx := context.Background()
+	nodes, err := stateProvider.GetHealthyNodes(ctx)
+	if err != nil {
+		log.Printf("WARNING: failed to get healthy nodes for evict fan-out: %v", err)
+		return
+	}
+
+	for _, node := range nodes {
+		client, err := grpcPool.GetClient(node.Address)
+		if err != nil {
+			log.Printf("WARNING: failed to connect to agent %s for evict: %v", node.Address, err)
+			continue
+		}
+		if _, err := client.EvictFunction(ctx, &pb.EvictRequest{FuncName: funcName}); err != nil {
+			log.Printf("WARNING: failed to evict function %s on agent %s: %v", funcName, node.Address, err)
+		}
+	}
 }
