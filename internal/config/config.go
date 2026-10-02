@@ -45,7 +45,6 @@ func (t *DBType) UnmarshalJSON(data []byte) error {
 
 type Config struct {
 	NodeID    string           `json:"node_id"`
-	Mode      string           `json:"mode"`       // "standalone", "gateway", "agent"
 	GRPCPort  string           `json:"grpc_port"`  // agent gRPC port
 	RedisAddr string           `json:"redis_addr"` // Redis address for cluster coordination
 	Type      DBType           `json:"db_type"`    // postgres, mysql
