@@ -4,9 +4,9 @@
 
 # Glambdar
 
-Glambdar is a minimal serverless function runtime written in Go for executing Bun functions with Docker-based isolation.
+Glambdar is a high-performance serverless function runtime written in Go for executing Bun functions with Docker-based isolation.
 
-It is simple and focuses on the core mechanics of a serverless runtime: deployment, invocation, isolation and IPC.
+It supports both **standalone single-node** operation and a fully **distributed multi-node** deployment with a controller/agent architecture.
 
 [![GoDoc](https://godoc.org/github.com/eswar-7116/glambdar?status.svg)](https://godoc.org/github.com/eswar-7116/glambdar)
 
@@ -14,19 +14,33 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 
 ## Execution Flow
 
+### Standalone Mode
+
 1. A function is uploaded as a zip file via `/deploy`
 2. The zip is stream-uploaded directly to S3 storage
 3. On invocation:
    - If the function directory is not present locally in `~/.glambdar/functions`, the zip is downloaded from S3 storage and extracted on demand
-   - A warm Docker container is acquired from the pool (or a new one started)
-   - The function code is mounted
+   - A warm Docker container is acquired from the pool (or a new one started) and sandboxed under gVisor (`runsc`)
+   - The function code is injected into the container
    - A Bun worker executes the function
    - Communication between runtime and worker happens via Unix Domain Sockets (UDS)
    - After execution, the container is returned to the pool for reuse
 
 4. The response is returned to the client
-5. Metadata and execution logs are tracked in a database for each function
+5. Invocation counters are accumulated and flushed to the database in batches
 6. Functions can be queried or deleted via API routes (deleting a function removes code from S3, local cache, metadata, and logs)
+
+### Distributed Mode (Controller + Agents)
+
+1. The **controller** receives function deployments and invocations via its HTTP API
+2. On deploy, the zip is stream-uploaded to S3; the controller fans out `PreloadFunction` gRPC calls to all healthy agent nodes so they can warm their container pools
+3. On invocation, the controller queries Redis for healthy agent nodes:
+   - Prefers nodes with idle warm containers for the target function
+   - Falls back to the node with the highest available memory/CPU
+   - Routes the request via gRPC to the selected **agent**
+4. The **agent** handles the actual function execution identically to standalone mode and returns the response over gRPC
+5. On delete, the controller fans out `EvictFunction` gRPC calls to drain all agent pools and remove local caches
+6. Rate limiting is enforced globally across all agents via a Redis token bucket
 
 ---
 
@@ -39,6 +53,8 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 - **Go** (for building the runtime)
 - **Bun** (inside Docker container, managed by the `oven/bun:slim` container image)
 - **S3-compatible Object Storage** (AWS S3, SeaweedFS, MinIO, RustFS, Ceph, etc.)
+- **PostgreSQL or MySQL** (required for metadata and auth)
+- **Redis** _(distributed mode only)_ - required for cluster state, node heartbeats, and global rate limiting
 
 ---
 
@@ -54,11 +70,14 @@ It is simple and focuses on the core mechanics of a serverless runtime: deployme
 
 > **Configuration precedence:** CLI flags > Environment variables (`GLMBD_*`) > `config.json` values.
 > Glambdar configuration can be customized by creating a `~/.glambdar/config.json` file.
-> You can also configure via environment variables prefixed with `GLMBD_` or CLI flags (e.g., `--db_type`, `--dsn`). Run `glambdar --help` to see all available flags.
+> You can also configure via environment variables prefixed with `GLMBD_` or CLI flags (e.g., `--db-type`, `--dsn`). Run `glambdar --help` to see all available flags.
 
 ```jsonc
 {
   "node_id": "", // Generated automatically and persisted for this instance
+  "http_port": "8000", // HTTP server port (controller / standalone mode)
+  "grpc_port": "9090", // gRPC server port (for agents)
+  "redis_addr": "", // Redis address for cluster state (required in distributed mode)
   "db_type": "postgres", // postgres or mysql
   "dsn": "postgres://user:pass@localhost:5432/glambdar",
   "s3": {
@@ -123,20 +142,31 @@ cd glambdar
 
 ### 2. Run the runtime
 
-#### Option A: Run directly (development)
+#### Option A: Standalone single-node mode
 
 ```bash
-go run ./cmd/glambdar
-```
-
-#### Option B: Build and run
-
-```bash
-go build -o glambdar ./cmd/glambdar
-./glambdar
+go run .
+# or
+go build -o glambdar . && ./glambdar
 ```
 
 The runtime starts an HTTP server on **`localhost:8000`**.
+
+#### Option B: Distributed mode: run worker agents
+
+```bash
+./glambdar agent --grpc-port 9090 --redis-addr localhost:6379 --node-id worker-1
+```
+
+Each agent registers itself to Redis and publishes heartbeats every 5 seconds.
+
+#### Option C: Distributed mode: run the controller
+
+```bash
+./glambdar controller --http-port 8000 --redis-addr localhost:6379
+```
+
+The controller discovers agents via Redis and routes invocations over gRPC.
 
 ### 3. Deploy a function
 
@@ -380,12 +410,40 @@ Glambdar is optimized for low-latency function execution using persistent per-fu
 
 ---
 
+## Architecture
+
+Glambdar v4.0.0 introduces a controller/agent split for distributed deployments:
+
+```mermaid
+flowchart TD
+    Client(["HTTP Client"])
+    Controller["Controller\nHTTP API · Auth · Routing"]
+    Redis[("Redis\nCluster State")]
+
+    subgraph Agents["Worker Agents"]
+        direction LR
+        A1["Agent 1\nDocker + gVisor"]
+        A2["Agent 2\nDocker + gVisor"]
+        A3["Agent N\nDocker + gVisor"]
+    end
+
+    Client -->|HTTP| Controller
+    Controller <-->|"node state & rate limits"| Redis
+    Controller -->|gRPC| A1 & A2 & A3
+    A1 & A2 & A3 -->|heartbeat| Redis
+```
+
 ## Design choices
 
 - **Persistent Docker container pool** for reduced latency and auto-scaling
+- **gVisor (`runsc`) Sandboxing**: All function containers run under the gVisor OCI runtime for kernel-level isolation without the overhead of full VMs.
+- **Controller/Agent Split**: Separates the control plane (routing, auth, metadata, rate limiting) from the data plane (container execution), enabling independent horizontal scaling of worker agents.
+- **Redis Cluster State**: Agents publish heartbeats and pool status every 5 seconds. The controller uses this to route invocations to the warmest available node without any direct agent-to-controller connection.
 - **Intra-Function Concurrency:** Implemented a multi-request routing threshold (adapted from 2024 IEEE serverless optimization models) to drastically reduce cold starts under burst loads while maintaining strict process isolation.
 - **EWMA-Based Predictive Pre-Warming:** Uses Exponentially Weighted Moving Average traffic prediction with dynamic alpha to proactively spin up containers before demand spikes, eliminating cold starts under burst loads.
-- **UDS over TCP** for low-latency IPC
+- **Redis Token Bucket Rate Limiting**: In controller mode, rate limits are enforced globally across all agents with a Lua-backed Redis token bucket, preventing a single agent from being unaware of requests served by peers.
+- **Batch Metadata Writes**: Invocation counters are accumulated in memory and flushed to the database periodically, decoupling hot-path invocations from synchronous DB writes.
+- **UDS over TCP** for low-latency IPC between the Go runtime and the Bun worker inside each container
 - Simple IPC protocol (structured JSON)
 
 ---

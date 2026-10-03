@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v4.0.0] - 2026-10-03
+
+### Breaking Changes
+
+- **Distributed Architecture**: Glambdar is no longer a single-process runtime. It is now split into two operational modes: `agent` (data plane) and `controller` (control plane); each launched as a subcommand. Running `glambdar` without a subcommand still starts the standalone single-node mode.
+- **CLI migrated to Cobra**: All CLI flags now use hyphens (e.g., `--db-type`, `--grpc-port`) instead of underscores. Scripts using the old flag style must be updated.
+- **Redis required for controller and clustered agent modes**: A running Redis instance is required when operating in `controller` or clustered `agent` modes.
+- **SQLite dropped**: SQLite support has been fully removed. Only PostgreSQL and MySQL are supported as database backends.
+
+### Features
+
+- **Distributed Agent Mode** (`glambdar agent`): Worker agents now expose a gRPC server (`GlambdarAgent` service) to handle function invocations, preloads, evictions, and pool status reporting from the controller. Agents can optionally connect to a Redis cluster for state publishing.
+- **Controller Mode** (`glambdar controller`): A new control plane mode that exposes an HTTP API and routes all invocations to worker agents via gRPC. The controller uses Redis to discover healthy nodes and maintain cluster state.
+- **Protobuf & gRPC Definitions**: Added `proto/glambdar.proto` defining the `GlambdarAgent` service with `Invoke`, `PreloadFunction`, `EvictFunction`, and `GetStatus` RPCs.
+- **gRPC Client Pool** (`internal/controller`): The controller maintains persistent, lazily-initialized gRPC connections to agent nodes with double-checked locking to prevent duplicate connections.
+- **Redis Cluster State** (`internal/cluster`): New `StateProvider` interface backed by Redis for publishing and querying node health, warm pool status, and resource capacity. Agents publish heartbeats every 5 seconds.
+- **Smart Cluster Routing** (`internal/cluster.Router`): Invocations are routed to the node with the most idle warm containers for the target function. On cache miss, routing falls back to the node with the highest available memory and CPU, using round-robin across ties.
+- **Redis-Backed Rate Limiting**: In controller mode, rate limiting is enforced globally across all agents via a Redis token bucket (Lua script) instead of the local in-memory limiter used in standalone mode.
+- **`EnsureCached` Helper Function**: Extracted a reusable `EnsureCached` function in `internal/functions` to decouple cache population (S3 download + extraction) from invocation, enabling agents to preload functions independently.
+- **gVisor Container Sandboxing**: Function containers now run under the `runsc` (gVisor) OCI runtime with a host-UDS annotation, non-root user, dropped Linux capabilities, `no-new-privileges`, and a PID limit for improved security isolation.
+- **Node Identity**: Each instance now carries a persistent UUID `node_id`, auto-generated and saved to `~/.glambdar/config.json` on first boot. The current node ID is exposed via the `GET /node-id` endpoint.
+- **Batch Metadata Updates**: Invocation counters are now accumulated in memory and flushed to the database in batches, decoupling per-request metrics from synchronous DB writes to improve throughput.
+- **S3 Function Storage**: Function zip files are stream-uploaded directly to an S3-compatible backend on deploy and downloaded on-demand for cache misses, replacing local-only disk storage.
+- **Multipart Streaming Uploads**: Large function zip uploads are handled via multipart streaming to avoid buffering entire payloads in memory.
+- **Config via Environment Variables and CLI Flags**: All configuration fields can now be set via `GLMBD_*` environment variables or Cobra CLI flags, with precedence: CLI flags > env vars > `config.json`.
+
+### Refactoring & Improvements
+
+- **Scalable Docker API Interface**: `DockerAPI` and `MockDockerAPI` interfaces were redesigned to be more scalable and maintainable, making it easier to add new Docker operations without widespread refactoring.
+- **`CopyToContainer` for Worker Script Injection**: Replaced bind-mounts with `CopyToContainer` to avoid Docker-in-Docker (DinD) and Docker-out-of-Docker (DooD) permission issues in CI and containerized environments.
+- **Cobra CLI Framework**: Migrated the CLI from manual `flag` package parsing to Cobra, resolving flag-parsing edge cases across subcommands and enabling subcommand-local flags.
+- **Config field `db_config` renamed to `config`**: Internal config package organization streamlined.
+- **Subcommand-Based Mode Detection**: Mode (standalone vs. agent vs. controller) is now determined by the subcommand used to launch Glambdar, not a user-defined config field, eliminating ambiguous startup behavior.
+- **Deletion Cleanup**: Function deletion now correctly removes S3 objects and local cache directories in all cases.
+- **Container File Ownership**: Fixed UID issues when copying files into containers under non-root users with gVisor.
+
+### Bug Fixes
+
+- **CI Integration Tests**: Fixed missing directory issues and updated CI to perform complete integration tests end-to-end, including Redis and PostgreSQL service containers.
+
+### Testing
+
+- **Unit Tests**: Added unit tests for the controller mode, gRPC client pool, Redis cluster state, Redis rate limiter, and `EnsureCached` cache/storage download paths.
+- **Integration Tests**: Added end-to-end integration tests for the distributed architecture covering agent gRPC handlers and cluster routing.
+- **CI Updated**: GitHub Actions workflow now runs on both `main` and `dev` branches, spins up Redis alongside PostgreSQL, installs gVisor (`runsc`) in the CI environment, and runs the full test suite with `-race -count=1`.
+
+---
+
 ## [v3.0.0] - 2026-07-15
 
 ### Breaking Changes
