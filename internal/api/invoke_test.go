@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +15,6 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
 	"github.com/eswar-7116/glambdar/v3/internal/testutil"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/time/rate"
 )
 
 func TestInvokeHandler_NotFound(t *testing.T) {
@@ -43,6 +43,13 @@ func TestInvokeHandler_NotFound(t *testing.T) {
 	}
 }
 
+// denyLimiter is a test Limiter that always denies requests.
+type denyLimiter struct{}
+
+func (d *denyLimiter) Allow(_ context.Context, _ string, _ int) (bool, error) {
+	return false, nil
+}
+
 func TestInvokeHandler_RateLimited(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -63,12 +70,12 @@ func TestInvokeHandler_RateLimited(t *testing.T) {
 	// Create metadata in DB
 	config.DB.Create(&functions.Metadata{
 		Name:      funcName,
-		RateLimit: 1, // Will override later or just use this
+		RateLimit: 1,
 	})
 
-	// Mock a rate-limited pool
-	p, _ := config.PoolManager.GetOrCreate(funcName, 1, 1)
-	p.Limiter = rate.NewLimiter(rate.Limit(0), 0) // Never allow
+	// Set global rate limiter to always deny
+	config.RateLimiter = &denyLimiter{}
+	defer func() { config.RateLimiter = nil }()
 
 	router := Router()
 
@@ -87,3 +94,4 @@ func TestInvokeHandler_RateLimited(t *testing.T) {
 		t.Errorf("unexpected error message: %s", resp["error"])
 	}
 }
+

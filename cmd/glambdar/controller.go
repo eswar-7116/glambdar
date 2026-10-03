@@ -16,6 +16,8 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/controller"
 	"github.com/eswar-7116/glambdar/v3/internal/functions"
+	"github.com/eswar-7116/glambdar/v3/internal/ratelimit"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
 )
 
@@ -89,6 +91,10 @@ func runController(cmd *cobra.Command) {
 		os.Exit(1)
 	}
 	log.Printf("Connected to Redis cluster state at %s", cfg.RedisAddr)
+
+	// Initialize global rate limiter backed by Redis
+	redisClient := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
+	config.RateLimiter = ratelimit.NewRedisLimiter(redisClient)
 
 	// Initialize cluster router and gRPC client pool
 	router := cluster.NewRouter(stateProvider)

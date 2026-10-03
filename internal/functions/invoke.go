@@ -88,12 +88,18 @@ func Invoke(ctx context.Context, d *docker.Docker, funcName string, req InvokeRe
 	}
 
 	// Acquire a warm container or create a new one
-	p, err := config.PoolManager.GetOrCreate(funcName, md.RateLimit, md.MaxConcurrency)
+	p, err := config.PoolManager.GetOrCreate(funcName, md.MaxConcurrency)
 	if err != nil {
 		return InvokeResponse{}, fmt.Errorf("failed to get pool: %w", err)
 	}
-	if !p.Limiter.Allow() {
-		return InvokeResponse{}, ErrRateLimited
+	if config.RateLimiter != nil {
+		allowed, rlErr := config.RateLimiter.Allow(ctx, funcName, md.RateLimit)
+		if rlErr != nil {
+			return InvokeResponse{}, fmt.Errorf("rate limit check failed: %w", rlErr)
+		}
+		if !allowed {
+			return InvokeResponse{}, ErrRateLimited
+		}
 	}
 
 	p.InvokeCount.Add(1)

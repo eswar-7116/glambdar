@@ -99,6 +99,23 @@ func runAgent() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Start predictive prewarmer
+	config.PoolManager.StartPrewarmer(ctx, config.DockerClient, config.FunctionsDir, 30*time.Second)
+
+	// Start stale container cleanup
+	go func() {
+		staleTicker := time.NewTicker(30 * time.Second)
+		defer staleTicker.Stop()
+		for {
+			select {
+			case <-staleTicker.C:
+				config.PoolManager.RemoveStaleContainers(ctx, config.DockerClient, 10*time.Minute)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	if cfg.RedisAddr != "" {
 		stateProvider := cluster.NewRedisStateProvider(cfg.RedisAddr)
 		if err := stateProvider.Join(ctx); err != nil {
@@ -124,6 +141,14 @@ func runAgent() {
 
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("gRPC server failed: %v", err)
+	}
+
+	// Clean up all containers on shutdown
+	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cleanupCancel()
+	config.PoolManager.DeleteAllContainers(cleanupCtx, config.DockerClient)
+	if err := config.DockerClient.Close(); err != nil {
+		log.Printf("Error closing Docker client: %v", err)
 	}
 }
 

@@ -11,7 +11,6 @@ import (
 	"github.com/eswar-7116/glambdar/v3/internal/docker"
 	"github.com/eswar-7116/glambdar/v3/internal/ewma"
 	"github.com/eswar-7116/glambdar/v3/internal/sockutil"
-	"golang.org/x/time/rate"
 )
 
 type PoolManager struct {
@@ -39,7 +38,7 @@ func (pm *PoolManager) GetPoolStatuses() map[string]PoolStatus {
 	return statuses
 }
 
-func (pm *PoolManager) GetOrCreate(funcName string, rateLimit int, maxConcurrency int32) (*ContainerPool, error) {
+func (pm *PoolManager) GetOrCreate(funcName string, maxConcurrency int32) (*ContainerPool, error) {
 	if val, ok := pm.pools.Load(funcName); ok {
 		return val.(*ContainerPool), nil
 	}
@@ -51,33 +50,10 @@ func (pm *PoolManager) GetOrCreate(funcName string, rateLimit int, maxConcurrenc
 
 	p, _ := pm.pools.LoadOrStore(funcName, &ContainerPool{
 		Idle:             make(chan *Entry, 10),
-		Limiter:          newLimiter(rateLimit),
 		MaxConcurrency:   maxConcurrency,
 		TrafficPredictor: predictor,
 	})
 	return p.(*ContainerPool), nil
-}
-
-func (pm *PoolManager) UpdateLimiter(funcName string, rateLimit int) {
-	if val, ok := pm.pools.Load(funcName); ok {
-		p := val.(*ContainerPool)
-		limit, burst := parseRateLimit(rateLimit)
-		p.Limiter.SetLimit(limit)
-		p.Limiter.SetBurst(burst)
-	}
-}
-
-func newLimiter(rateLimit int) *rate.Limiter {
-	limit, burst := parseRateLimit(rateLimit)
-	return rate.NewLimiter(limit, burst)
-}
-
-func parseRateLimit(rateLimit int) (rate.Limit, int) {
-	if rateLimit <= 0 {
-		return rate.Inf, 1e9 // unlimited burst
-	}
-	burst := max(rateLimit/10, 1)
-	return rate.Limit(rateLimit), burst
 }
 
 func (pm *PoolManager) DeletePool(ctx context.Context, d *docker.Docker, funcName string) {
@@ -174,14 +150,14 @@ func (pm *PoolManager) prewarm(ctx context.Context, d *docker.Docker, functionsD
 
 		toSpawn := desired - idleNow
 		for i := 0; i < toSpawn && idleNow+i < idleCap; i++ {
-			go spawnIdle(ctx, d, functionsDir, funcName, p)
+			go SpawnIdle(ctx, d, functionsDir, funcName, p)
 		}
 
 		return true
 	})
 }
 
-func spawnIdle(ctx context.Context, d *docker.Docker, functionsDir, funcName string, p *ContainerPool) {
+func SpawnIdle(ctx context.Context, d *docker.Docker, functionsDir, funcName string, p *ContainerPool) {
 	funcDir, err := filepath.Abs(filepath.Join(functionsDir, funcName))
 	if err != nil {
 		return

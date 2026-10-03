@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/eswar-7116/glambdar/v3/internal/ewma"
-	"golang.org/x/time/rate"
 )
 
 type Entry struct {
@@ -20,7 +19,6 @@ type Entry struct {
 
 type ContainerPool struct {
 	Idle             chan *Entry
-	Limiter          *rate.Limiter
 	MaxConcurrency   int32
 	InvokeCount      atomic.Int64
 	TrafficPredictor *ewma.TrafficPredictor

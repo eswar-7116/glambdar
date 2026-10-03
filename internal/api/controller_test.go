@@ -6,11 +6,15 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/eswar-7116/glambdar/v3/internal/cluster"
+	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/controller"
+	"github.com/eswar-7116/glambdar/v3/internal/functions"
+	"github.com/eswar-7116/glambdar/v3/internal/testutil"
 	pb "github.com/eswar-7116/glambdar/v3/proto"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
@@ -60,6 +64,16 @@ func setupTestControllerRouter() *gin.Engine {
 func TestControllerMode_InvokeNoNodes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	tempDir, err := os.MkdirTemp("", "glambdar-ctrl-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	testutil.SetupTestConfig(t, tempDir)
+	config.DB.AutoMigrate(&functions.Metadata{})
+	config.DB.Create(&functions.Metadata{Name: "my-fn"})
+
 	mockState := &mockStateProvider{healthyNodes: nil}
 	router := cluster.NewRouter(mockState)
 	pool := controller.NewGRPCClientPool()
@@ -86,6 +100,16 @@ func TestControllerMode_InvokeNoNodes(t *testing.T) {
 
 func TestControllerMode_InvokeSuccessAndErrors(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+
+	tempDir, err := os.MkdirTemp("", "glambdar-ctrl-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	testutil.SetupTestConfig(t, tempDir)
+	config.DB.AutoMigrate(&functions.Metadata{})
+	config.DB.Create(&functions.Metadata{Name: "test-fn"})
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

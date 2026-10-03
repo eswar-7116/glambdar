@@ -53,6 +53,27 @@ func invokeHandler(c *gin.Context) {
 	}
 
 	if controllerMode {
+		// Global rate limit check (controller-side, before routing to any agent)
+		md, err := functions.LoadMetadata(name)
+		if err != nil {
+			log.Println("ERROR loading metadata for rate limit:", err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Function not found!"})
+			return
+		}
+		if config.RateLimiter != nil {
+			allowed, rlErr := config.RateLimiter.Allow(c.Request.Context(), name, md.RateLimit)
+			if rlErr != nil {
+				log.Println("ERROR rate limit check:", rlErr)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Rate limit check failed"})
+				return
+			}
+			if !allowed {
+				c.JSON(http.StatusTooManyRequests, gin.H{
+					"error": "Rate limit exceeded. Please try again later.",
+				})
+				return
+			}
+		}
 		invokeViaGRPC(c, name, headers, bodyBytes)
 		return
 	}

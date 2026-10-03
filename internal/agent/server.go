@@ -96,6 +96,14 @@ func (s *AgentServer) PreloadFunction(ctx context.Context, req *proto.PreloadReq
 		return &proto.PreloadResponse{Success: false, Message: err.Error()}, nil
 	}
 
+	// Pre-warm a container for the function
+	if s.poolManager != nil && s.docker != nil {
+		p, err := s.poolManager.GetOrCreate(funcName, 10) // default max concurrency
+		if err == nil {
+			go pool.SpawnIdle(ctx, s.docker, config.FunctionsDir, funcName, p)
+		}
+	}
+
 	return &proto.PreloadResponse{Success: true, Message: fmt.Sprintf("Function %s preloaded successfully", funcName)}, nil
 }
 

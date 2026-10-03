@@ -7,6 +7,7 @@ import (
 
 	"github.com/eswar-7116/glambdar/v3/internal/docker"
 	"github.com/eswar-7116/glambdar/v3/internal/pool"
+	"github.com/eswar-7116/glambdar/v3/internal/ratelimit"
 	"github.com/eswar-7116/glambdar/v3/internal/storage"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -22,6 +23,7 @@ var (
 	PoolManager   = &pool.PoolManager{}
 	DB            *gorm.DB
 	StorageClient storage.Storage
+	RateLimiter   ratelimit.Limiter
 )
 
 func InitPaths() error {
@@ -92,6 +94,9 @@ func InitPathsWithBase(baseDir string) error {
 		return err
 	}
 	DB = db
+
+	RateLimiter = ratelimit.NewLocalLimiter()
+
 	return nil
 }
 
