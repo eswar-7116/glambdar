@@ -76,10 +76,7 @@ func parseRateLimit(rateLimit int) (rate.Limit, int) {
 	if rateLimit <= 0 {
 		return rate.Inf, 1e9 // unlimited burst
 	}
-	burst := rateLimit / 10
-	if burst < 1 {
-		burst = 1
-	}
+	burst := max(rateLimit/10, 1)
 	return rate.Limit(rateLimit), burst
 }
 
