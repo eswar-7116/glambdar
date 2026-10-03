@@ -50,6 +50,8 @@ func (d *denyLimiter) Allow(_ context.Context, _ string, _ int) (bool, error) {
 	return false, nil
 }
 
+func (d *denyLimiter) UpdateLimit(_ string, _ int) {}
+
 func TestInvokeHandler_RateLimited(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -94,4 +96,3 @@ func TestInvokeHandler_RateLimited(t *testing.T) {
 		t.Errorf("unexpected error message: %s", resp["error"])
 	}
 }
-

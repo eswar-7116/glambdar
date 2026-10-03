@@ -54,7 +54,7 @@ func setupIntegrationTest(t *testing.T) (string, *gin.Engine, func()) {
 	router := gin.Default()
 	router.Use(AuthMiddleware())
 	RegisterRoutes(router)
-	
+
 	// Add mock routes for testing middleware
 	router.GET("/info", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
 	router.POST("/deploy", func(c *gin.Context) { c.JSON(201, gin.H{"status": "ok"}) })

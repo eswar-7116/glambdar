@@ -198,4 +198,62 @@ func TestControllerMode_InvokeSuccessAndErrors(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected status 404, got %d", w.Code)
 	}
+
+	// Unavailable
+	agentServer.invokeFn = func(ctx context.Context, req *pb.InvokeRequest) (*pb.InvokeResponse, error) {
+		return nil, status.Error(codes.Unavailable, "agent unavailable")
+	}
+
+	req, _ = http.NewRequest("POST", "/invoke/test-fn", strings.NewReader(`{}`))
+	w = httptest.NewRecorder()
+	engine.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status 503 for unavailable agent, got %d", w.Code)
+	}
+}
+
+func TestControllerMode_InvokeRateLimited_Global(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tempDir, err := os.MkdirTemp("", "glambdar-ctrl-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	testutil.SetupTestConfig(t, tempDir)
+	config.DB.AutoMigrate(&functions.Metadata{})
+	config.DB.Create(&functions.Metadata{Name: "global-limited-fn", RateLimit: 10})
+
+	// Global rate limiter that always denies
+	config.RateLimiter = &denyLimiter{}
+	defer func() { config.RateLimiter = nil }()
+
+	mockState := &mockStateProvider{
+		healthyNodes: []cluster.NodeStatus{
+			{NodeID: "agent-1", Address: "127.0.0.1:9090"}, // dummy address
+		},
+	}
+	router := cluster.NewRouter(mockState)
+	pool := controller.NewGRPCClientPool()
+	defer pool.CloseAll()
+
+	SetControllerMode(router, pool, mockState)
+	defer func() {
+		controllerMode = false
+		clusterRouter = nil
+		grpcPool = nil
+		stateProvider = nil
+	}()
+
+	engine := setupTestControllerRouter()
+
+	req, _ := http.NewRequest("POST", "/invoke/global-limited-fn", strings.NewReader(`{}`))
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected status 429 from global rate limiter, got %d", w.Code)
+	}
 }

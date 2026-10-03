@@ -2,9 +2,12 @@ package agent
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
+	"github.com/eswar-7116/glambdar/v3/internal/config"
 	"github.com/eswar-7116/glambdar/v3/internal/pool"
 	"github.com/eswar-7116/glambdar/v3/proto"
 )
@@ -101,5 +104,67 @@ func TestAgentServer_EvictFunction_NonexistentFunc(t *testing.T) {
 
 	if !resp.Success {
 		t.Error("expected evict to succeed even for a non-existent function")
+	}
+}
+
+func TestAgentServer_GetStatus_WithPools(t *testing.T) {
+	pm := &pool.PoolManager{}
+	pm.GetOrCreate("func-1", 10)
+	pm.GetOrCreate("func-2", 20)
+
+	srv := NewAgentServer("n1", nil, pm, nil)
+
+	resp, err := srv.GetStatus(context.Background(), &proto.StatusRequest{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(resp.Pools) != 2 {
+		t.Fatalf("expected 2 pools in status, got %d", len(resp.Pools))
+	}
+
+	if resp.Pools["func-1"].MaxConcurrency != 10 {
+		t.Errorf("expected func-1 MaxConcurrency 10, got %d", resp.Pools["func-1"].MaxConcurrency)
+	}
+	if resp.Pools["func-2"].MaxConcurrency != 20 {
+		t.Errorf("expected func-2 MaxConcurrency 20, got %d", resp.Pools["func-2"].MaxConcurrency)
+	}
+}
+
+func TestAgentServer_EvictFunction_RemovesLocalDir(t *testing.T) {
+	oldDir := config.FunctionsDir
+	tempDir := t.TempDir()
+	config.FunctionsDir = tempDir
+	defer func() { config.FunctionsDir = oldDir }()
+
+	funcDir := filepath.Join(tempDir, "some-func")
+	if err := os.MkdirAll(funcDir, 0755); err != nil {
+		t.Fatalf("failed to create dummy function dir: %v", err)
+	}
+
+	srv := NewAgentServer("n1", nil, &pool.PoolManager{}, nil)
+
+	resp, err := srv.EvictFunction(context.Background(), &proto.EvictRequest{FuncName: "some-func"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.Success {
+		t.Error("expected evict to succeed")
+	}
+
+	if _, err := os.Stat(funcDir); !os.IsNotExist(err) {
+		t.Errorf("expected directory %s to be removed, but it still exists or error: %v", funcDir, err)
+	}
+}
+
+func TestAgentServer_NewAgentServer(t *testing.T) {
+	pm := &pool.PoolManager{}
+	srv := NewAgentServer("test-node-id", nil, pm, nil)
+
+	if srv.nodeID != "test-node-id" {
+		t.Errorf("expected nodeID 'test-node-id', got '%s'", srv.nodeID)
+	}
+	if srv.poolManager != pm {
+		t.Error("expected poolManager to be set correctly")
 	}
 }

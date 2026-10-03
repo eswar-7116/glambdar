@@ -18,6 +18,10 @@ import (
 func RequireTestDSN(t *testing.T) string {
 	t.Helper()
 
+	if os.Getenv("RUN_INTEGRATION_TESTS") != "1" {
+		t.Skip("RUN_INTEGRATION_TESTS != 1; skipping integration tests")
+	}
+
 	dsn := os.Getenv("TEST_DSN")
 	if dsn == "" {
 		t.Skip("TEST_DSN not set; skipping DB test (set TEST_DSN=postgres://... to run)")

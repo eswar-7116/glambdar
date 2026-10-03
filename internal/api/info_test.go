@@ -32,7 +32,7 @@ func TestInfoHandler(t *testing.T) {
 	funcName := "testfunc"
 	funcDir := filepath.Join(tempDir, "functions", funcName)
 	os.MkdirAll(funcDir, 0755)
-	
+
 	md := &functions.Metadata{
 		Name: funcName,
 	}

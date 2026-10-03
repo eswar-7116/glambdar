@@ -33,6 +33,16 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
     - uses: actions/checkout@v4
 
@@ -61,5 +71,6 @@ jobs:
     - name: Unit and Integration Tests
       env:
         TEST_DSN: postgres://test@localhost:5432/glambdar?sslmode=disable
+        TEST_REDIS_ADDR: localhost:6379
         RUN_INTEGRATION_TESTS: 1
       run: go test -v -race -count=1 ./...

@@ -19,8 +19,8 @@ import (
 func setupInvokeEnv(t *testing.T) func() {
 	t.Helper()
 
-	if os.Getenv("RUN_INTEGRATION_TESTS") == "" {
-		t.Skip("skipping integration test")
+	if os.Getenv("RUN_INTEGRATION_TESTS") != "1" {
+		t.Skip("RUN_INTEGRATION_TESTS != 1; skipping integration test")
 	}
 
 	tmp := t.TempDir()
